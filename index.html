@@ -1,88 +1,1528 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem EXACT - Pengawasan Peperiksaan</title>
-    <!-- Kita gunakan Bootstrap untuk mencantikkan paparan (sama seperti sistem lama anda) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EXACT - Examination Attendance and Checkout Tracker</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root{
+      --brand-blue:   #004A98;
+      --brand-teal:   #00A5A5;
+      --brand-navy:   #002C5F;
+      --brand-yellow: #F5C000;
+      --brand-gray:   #f4f6f8;
+    }
+    html, body { height: 100%; background-color: var(--brand-gray); }
+    .wrap { max-width: 95%; margin: 20px auto; }
+    .card { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.06); }
+
+    .brand-bar {
+      background: linear-gradient(90deg, var(--brand-blue), var(--brand-teal));
+      border-radius: 14px;
+      padding: 10px 14px;
+      color: #fff;
+      display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center;
+    }
+    .brand-title { display:flex; align-items:center; gap:12px; cursor: pointer; }
+    .brand-title h3 { margin:0; font-weight:700; letter-spacing:.2px; }
+
+    .nav-btn { min-width: 100px; font-weight: 600; border:2px solid var(--brand-yellow) !important; flex-grow: 1;}
+    #navHome     { background:#ffffff; color: var(--brand-navy); }
+    #navHome:hover, #navHome.active { box-shadow: 0 0 0 3px rgba(245,192,0,.25); }
+    #navCheckin  { background: var(--brand-blue); color:#fff; }
+    #navCheckin:hover, #navCheckin.active { background:#0a5bbd; color:#fff; box-shadow: 0 0 0 3px rgba(245,192,0,.25); }
+    #navCheckout { background: var(--brand-teal); color:#fff; }
+    #navCheckout:hover, #navCheckout.active { background:#079090; color:#fff; box-shadow: 0 0 0 3px rgba(245,192,0,.25); }
+    #navCollection { background: var(--brand-navy); color:#fff; }
+    #navCollection:hover, #navCollection.active { background:#001a3d; color:#fff; box-shadow: 0 0 0 3px rgba(245,192,0,.25); }
+    #navReports { background: #6c757d; color:#fff; }
+    #navReports:hover, #navReports.active { background:#5c636a; color:#fff; box-shadow: 0 0 0 3px rgba(245,192,0,.25); }
+
+    .tableWrap{ overflow: auto; max-height: 60vh; border: 1px solid rgba(0,0,0,0.08); border-radius: .5rem; background: #fff; }
+    .tableWrap table { white-space: nowrap; }
+    thead th { position: sticky; top: 0; z-index: 1; background: #eaf6f6; color: #0b3c4c; }
+
+    .status-on  { color: #178a00; font-weight: 700; }
+    .status-gp  { color: #d48b00; font-weight: 700; } 
+    .status-late{ color: #c62828; font-weight: 700; }
+
+    .clickable { color: #0a58ca; cursor: pointer; text-decoration: underline; }
+    .clickable:hover { opacity: .9; }
+    .muted-note{ color:#6c757d; font-size:.92rem; }
+    
+    .report-stat-card {
+        padding: 1.5rem; border-radius: 10px; border:none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;
+    }
+
+    .co-course-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .co-course-code { flex: 1; min-width: 120px;}
+    .co-course-desc { flex: 3; }
+    .co-btn-remove { width: 44px; height: 38px; display: flex; align-items: center; justify-content: center; }
+
+    .clickable-card { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+    .clickable-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15) !important; }
+    .active-card { border: 4px solid var(--brand-blue) !important; transform: scale(1.02); }
+  </style>
 </head>
-<body class="bg-light">
 
-    <div class="container mt-5">
-        <div class="card shadow" style="max-width: 500px; margin: auto;">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">Check-In Pengawas Peperiksaan</h4>
-            </div>
-            <div class="card-body">
-                
-                <!-- INI ADALAH BORANG KITA -->
-                <form id="checkInForm">
-                    <div class="mb-3">
-                        <label class="form-label">Nama Staf</label>
-                        <input type="text" id="staff_name" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">ID Staf</label>
-                        <input type="text" id="staff_id" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Venue Peperiksaan</label>
-                        <input type="text" id="venue" class="form-control" required>
-                    </div>
-                    <button type="submit" class="btn btn-success w-100">Hantar Kehadiran</button>
-                </form>
-
-                <!-- Ruangan untuk memaparkan mesej berjaya/gagal -->
-                <div id="statusMessage" class="mt-3 text-center"></div>
-
-            </div>
-        </div>
+<body>
+  <div class="wrap">
+    <div class="brand-bar mb-3">
+      <div class="brand-title" onclick="route('home')" title="Go to Home">
+        <h3 class="m-0">EXACT - Examination Attendance and Checkout Tracker</h3>
+      </div>
+      <div class="btn-group flex-wrap">
+        <button id="navHome" class="btn nav-btn" onclick="route('home')">Home</button>
+        <button id="navCheckin" class="btn nav-btn text-white" onclick="route('checkin')">Check-In</button>
+        <button id="navCheckout" class="btn nav-btn text-white" onclick="route('checkout')">Check-Out</button>
+        <button id="navCollection" class="btn nav-btn text-white" onclick="route('collection')">Collection</button>
+        <button id="navReports" class="btn nav-btn text-white" onclick="route('reports')">Reports</button>
+      </div>
     </div>
 
-    <!-- INI ADALAH LOGIK JAVASCRIPT SAAS KITA -->
-    <script>
-        document.getElementById('checkInForm').addEventListener('submit', function(event) {
-            event.preventDefault(); // Mengelakkan muka surat di-refresh
+    <!-- HOME SCREEN -->
+    <section id="screen-home">
+      <div class="card p-3">
+        <h5 class="mb-3">Master Schedule</h5>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label class="form-label">Date (dd/MM/yyyy)</label>
+            <input type="text" id="fDate" class="form-control" placeholder="dd/MM/yyyy">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Campus</label>
+            <select id="fCampus" class="form-select"><option value="">All</option></select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Venue</label>
+            <select id="fVenue" class="form-select"><option value="">All</option></select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Session</label>
+            <select id="fSession" class="form-select"><option value="">All</option></select>
+          </div>
+        </div>
+        
+        <div class="row g-2 align-items-end mt-2">
+          <div class="col-md-6">
+            <label class="form-label">Search (Name / ID / Course)</label>
+            <input id="fSearch" class="form-control" placeholder="e.g. 2477, Nur, BPM ...">
+          </div>
+          <div class="col-md-6">
+             <div class="d-flex gap-2">
+                <button class="btn text-white flex-grow-1" style="background:var(--brand-teal); border:2px solid var(--brand-yellow);" onclick="loadMasterSchedule()">Filter / Search</button>
+                <button class="btn btn-outline-secondary flex-grow-1" onclick="clearHomeFilters()">Clear</button>
+             </div>
+          </div>
+        </div>
 
-            // 1. Tunjuk mesej memproses
-            const statusDiv = document.getElementById('statusMessage');
-            statusDiv.innerHTML = '<span class="text-secondary">Sedang menghantar data...</span>';
+        <div class="tableWrap mt-4">
+          <table class="table table-bordered table-sm align-middle mb-0" id="masterTable">
+            <thead><tr id="masterHead"></tr></thead>
+            <tbody id="masterBody"><tr><td class="text-center text-muted py-4">Please set the details and press the <strong>Filter / Search</strong> button to display the schedule.</td></tr></tbody>
+          </table>
+        </div>
+        <div class="mt-2 muted-note">
+          * Only <strong>today’s</strong> schedule allows clickable name to auto-fill Check-In.
+        </div>
+      </div>
+    </section>
 
-            // 2. Ambil data dari kotak input
-            const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; // <-- TUKAR DI SINI
-            const staffName = document.getElementById('staff_name').value;
-            const staffId = document.getElementById('staff_id').value;
-            const examVenue = document.getElementById('venue').value;
+    <!-- CHECK-IN SCREEN -->
+    <section id="screen-checkin" class="d-none">
+      <div class="card p-4">
+        <h4 class="text-center mb-3">Check-In</h4>
+        <form id="checkinForm" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Staff ID</label>
+            <div class="input-group">
+              <input id="staffId" class="form-control" placeholder="Enter ID to auto-fill" required>
+              <button class="btn btn-secondary" type="button" id="btnSearchId">Search</button>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Name</label>
+            <input id="name" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Role</label>
+            <select id="role" class="form-select" required>
+              <option value="">Select role</option>
+              <option>Chief Hall</option>
+              <option>Chief Invigilator</option>
+              <option>Invigilator</option>
+              <option>Secretariat</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Campus</label>
+            <select id="campus" class="form-select" required></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Venue</label>
+            <select id="venue" class="form-select" required disabled></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Exam Session</label>
+            <select id="session" class="form-select" required disabled></select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Remarks (optional)</label>
+            <input id="remarks" class="form-control" placeholder="e.g. swapped with: Aminah binti Abu (ID)">
+          </div>
 
-            // 3. Hantar data ke Pelayan Node.js (Ganti google.script.run)
-            fetch('http://localhost:3000/api/checkin', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    tenant_id: tenantId,
-                    staff_name: staffName,
-                    staff_id: staffId,
-                    venue: examVenue
-                })
+          <div id="courseInfoBox" class="col-12 d-none mt-3">
+            <div class="card p-3 shadow-sm border" style="background-color: #f8f9fa; border-color: rgba(0,0,0,0.08) !important;">
+              <label class="form-label fw-bold mb-3" style="color: var(--brand-navy); font-size: 1.05rem;">Your Assigned Courses for this Session:</label>
+              <div id="courseDisplayList" class="d-flex flex-column gap-2"></div>
+            </div>
+          </div>
+
+          <div class="col-12 text-center mt-4">
+            <button id="btnCheckin" type="button" class="btn text-white px-4" style="background:var(--brand-blue); border:2px solid var(--brand-yellow);">Check In</button>
+            <button id="btnClear" type="button" class="btn btn-outline-secondary ms-2">Clear</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- CHECK-OUT SCREEN -->
+    <section id="screen-checkout" class="d-none">
+      <div class="card p-4">
+        <h4 class="text-center mb-3">Check-Out</h4>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Campus</label>
+            <select id="coCampus" class="form-select"></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Venue</label>
+            <select id="coVenue" class="form-select" disabled></select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Session</label>
+            <select id="coSession" class="form-select" disabled></select>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-3">
+          <div class="col-md-4">
+            <label class="form-label">Return Answer Script?</label>
+            <select id="coReturn" class="form-select">
+              <option value="">Select</option>
+              <option>Yes</option>
+              <option>No</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <label class="form-label">Select name (today only)</label>
+          <div class="tableWrap">
+            <table class="table table-sm mb-0 align-middle">
+              <thead>
+                <tr>
+                  <th style="width:60px">No.</th>
+                  <th>Name</th>
+                  <th style="width:120px">ID</th>
+                  <th style="width:150px">Role</th>
+                  <th style="width:90px" class="text-center">
+                    Select All<br><input type="checkbox" id="selectAllCo" class="form-check-input mt-1">
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="coAttendeesBody">
+                <tr><td colspan="5" class="text-muted text-center py-2">Select campus, venue, and session to load attendees…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="muted-note mt-2">
+            * If <strong>Return Answer Script = Yes</strong>, only <strong>Chief Invigilator</strong> will be displayed for selection.
+          </div>
+        </div>
+
+        <div id="coCourseBox" class="mt-3 d-none">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label m-0">Select Course</label>
+            <button type="button" class="btn btn-dark btn-sm" id="btnAddCourse">+ Add Course</button>
+          </div>
+          <div id="courseRows" class="d-flex flex-column"></div>
+          <div class="muted-note mt-1">Maximum 6 course codes. Courses already returned will not appear here.</div>
+        </div>
+
+        <div class="text-center mt-4">
+          <button class="btn text-white me-2" id="btnCheckout" style="background:var(--brand-teal); border:2px solid var(--brand-yellow);" onclick="submitCheckout()">Check-Out</button>
+          <button class="btn btn-outline-secondary" onclick="clearCheckout()">Clear</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- COLLECTION SCREEN -->
+    <section id="screen-collection" class="d-none">
+      <div class="card p-4">
+        <h4 class="text-center mb-3" style="color: var(--brand-navy);">Answer Script Collection</h4>
+        <form id="collectionForm" class="row g-3">
+          
+          <div class="col-md-6">
+            <label class="form-label text-navy fw-bold">1. Location of Collection</label>
+            <select id="colCampus" class="form-select mb-2" required>
+              <option value="">Select Campus</option>
+            </select>
+            <select id="colVenue" class="form-select" required disabled>
+              <option value="">Select Venue</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label text-navy fw-bold">2. Course Details</label>
+            <div class="input-group mb-2">
+              <input id="colCourseSearch" class="form-control" placeholder="Search by Code or Name..." required>
+              <button class="btn btn-secondary" type="button" onclick="searchGlobalCourse()">Search</button>
+            </div>
+            <select id="colCourseSelect" class="form-select mb-2 d-none" onchange="selectCourseFromList()"></select>
+            <input type="hidden" id="colCourseCode">
+            <input id="colCourseName" class="form-control mb-2" placeholder="Course Name (Auto-fill)" readonly>
+            
+            <div class="row g-2">
+               <div class="col-sm-5">
+                   <input id="colQuantity" type="number" class="form-control" placeholder="Qty (Booklets)" min="1" required>
+               </div>
+               <div class="col-sm-7">
+                   <input id="colRemarks" class="form-control" placeholder="Remarks (Optional) e.g Section 01G">
+               </div>
+            </div>
+          </div>
+
+          <hr class="mt-4 mb-2">
+
+          <div class="col-md-6">
+            <label class="form-label text-navy fw-bold">3. Self (Name)</label>
+            <div class="input-group mb-2">
+              <input id="colStaffId" class="form-control" placeholder="ID (Optional auto-fill)">
+              <button class="btn btn-secondary" type="button" onclick="searchGlobalStaff('colStaffId', 'colName')">Search ID</button>
+            </div>
+            <input id="colName" class="form-control" placeholder="Enter Name">
+            
+            <label class="form-label text-navy fw-bold mt-3">4. Representative (Optional)</label>
+            <div class="input-group mb-2">
+              <input id="colRepId" class="form-control" placeholder="ID (Optional auto-fill)">
+              <button class="btn btn-secondary" type="button" onclick="searchGlobalStaff('colRepId', 'colRepName')">Search ID</button>
+            </div>
+            <input id="colRepName" class="form-control" placeholder="Enter Representative Name (if any)">
+            <div class="muted-note mt-1">* You must fill in either Self (Name) OR Representative.</div>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label text-navy fw-bold">5. Contact No.</label>
+            <input id="colPhone" type="tel" class="form-control mb-4" placeholder="e.g. 012-3456789" required>
+
+            <label class="form-label text-navy fw-bold">6. Declaration of Collection</label>
+            <div class="p-3 mb-3 border rounded bg-light text-secondary" style="font-size: 0.95rem;">
+              <div class="form-check">
+                <input class="form-check-input mt-1" type="checkbox" id="colDeclaration" required style="transform: scale(1.2);">
+                <label class="form-check-label text-dark ms-2" for="colDeclaration">
+                  <strong>I hereby acknowledge that I have received the specified answer script(s).</strong> I understand and accept full responsibilities for the security, confidentiality, and any loss or damage to these scripts while they are in my possession.
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12 text-center mt-4">
+            <button id="btnSubmitCol" type="button" class="btn text-white px-4" style="background:var(--brand-navy); border:2px solid var(--brand-yellow);" onclick="submitCollection()">Confirm Collection</button>
+            <button type="button" class="btn btn-outline-secondary ms-2" onclick="clearCollectionForm()">Reset Form</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- REPORTS SCREEN -->
+    <section id="screen-reports" class="d-none">
+      <div class="card p-4">
+        <h4 class="text-center mb-4 text-navy fw-bold">Reports Summary</h4>
+        <div class="row g-3 align-items-end mb-4 p-3 border rounded bg-white">
+          <div class="col-md-4">
+             <label class="form-label fw-bold">Filter By Semester</label>
+             <select id="repSemester" class="form-select" onchange="onSemesterChange()">
+                <option value="">Select Semester...</option>
+             </select>
+          </div>
+          <div class="col-md-5">
+             <label class="form-label fw-bold">Or Select Date Range</label>
+             <div class="input-group">
+                 <input type="text" id="repDateStart" class="form-control" placeholder="Start Date">
+                 <span class="input-group-text">to</span>
+                 <input type="text" id="repDateEnd" class="form-control" placeholder="End Date">
+             </div>
+          </div>
+          <div class="col-md-3">
+             <div class="d-flex gap-2">
+                 <button id="btnGenerateRep" class="btn text-white flex-grow-1 fw-bold" style="background:var(--brand-blue);" onclick="generateReports()">Generate Report</button>
+                 <button type="button" class="btn btn-outline-secondary" onclick="clearReports()">Clear</button>
+             </div>
+          </div>
+        </div>
+
+        <div id="reportDashboard" class="d-none">
+           <div class="muted-note text-center mb-3"><em>* Click on any card below to view and download the specific report list.</em></div>
+           <div class="row g-3 mb-4">
+              <div class="col-md-3 col-6"><div id="card-TOTAL" class="report-stat-card bg-light clickable-card" onclick="showReportCategory('TOTAL')"><h3 id="statTotal" class="text-dark m-0">0</h3><div class="small fw-bold">Total Check-In</div></div></div>
+              <div class="col-md-3 col-6"><div id="card-ONTIME" class="report-stat-card clickable-card" style="background:#eafaf1;" onclick="showReportCategory('ONTIME')"><h3 id="statOnTime" class="text-success m-0">0</h3><div class="small fw-bold">On-Time</div></div></div>
+              <div class="col-md-3 col-6"><div id="card-GP" class="report-stat-card clickable-card" style="background:#fff8e1;" onclick="showReportCategory('GP')"><h3 id="statGP" class="m-0" style="color:#d48b00;">0</h3><div class="small fw-bold">GP: On-Time</div></div></div>
+              <div class="col-md-3 col-6"><div id="card-LATE" class="report-stat-card clickable-card" style="background:#fdeaea;" onclick="showReportCategory('LATE')"><h3 id="statLate" class="text-danger m-0">0</h3><div class="small fw-bold">Late</div></div></div>
+              <div class="col-md-4 col-6"><div id="card-ABSENT" class="report-stat-card bg-secondary text-white clickable-card" onclick="showReportCategory('ABSENT')"><h3 id="statAbsent" class="m-0 text-white">0</h3><div class="small fw-bold">Absent (Not Checked-In)</div></div></div>
+              <div class="col-md-4 col-6"><div id="card-TOTALOUT" class="report-stat-card text-white clickable-card" style="background:#0a58ca;" onclick="showReportCategory('TOTALOUT')"><h3 id="statTotalOut" class="m-0 text-white">0</h3><div class="small fw-bold">Total Check-Out</div></div></div>
+              <div class="col-md-4 col-12"><div id="card-PENDING" class="report-stat-card bg-dark text-white clickable-card" onclick="showReportCategory('PENDING')"><h3 id="statPendingOut" class="m-0 text-white">0</h3><div class="small fw-bold">Pending Check-Out</div></div></div>
+              <div class="col-md-6 col-6"><div id="card-RETURNED" class="report-stat-card text-white clickable-card" style="background:var(--brand-teal);" onclick="showReportCategory('RETURNED')"><h3 id="statScripts" class="m-0 text-white">0</h3><div class="small fw-bold">Script Returned (By Chief)</div></div></div>
+              <div class="col-md-6 col-6"><div id="card-COLLECTION" class="report-stat-card text-white clickable-card" style="background:var(--brand-navy);" onclick="showReportCategory('COLLECTION')"><h3 id="statCollection" class="m-0 text-white">0</h3><div class="small fw-bold">Counter Collection</div></div></div>
+           </div>
+           
+           <div id="dynamicReportArea" class="d-none mt-4 border-top pt-4">
+             <div class="d-flex justify-content-between align-items-center mb-3">
+                 <h5 id="dynamicReportTitle" class="fw-bold m-0" style="color:var(--brand-navy);">Report List</h5>
+                 <button class="btn btn-sm btn-danger fw-bold" onclick="downloadReportPDF()">Download PDF</button>
+             </div>
+             <div class="tableWrap" style="max-height: 400px;">
+               <table class="table table-sm table-striped align-middle" id="reportDataTable">
+                 <thead id="reportDataHead"></thead>
+                 <tbody id="reportDataBody"></tbody>
+               </table>
+             </div>
+           </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="modal fade" id="checkinResultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="checkinModalTitle">Result</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="checkinModalBody"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+
+  <script>
+    function toIsoFromDisplay(ddmmyyyy){
+      if(!ddmmyyyy) return '';
+      const [d,m,y] = ddmmyyyy.split('/').map(s=>parseInt(s,10));
+      if(!y || !m || !d) return '';
+      return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+
+    function toDisplayFromIso(value){
+      if(!value) return '';
+      let d;
+      if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+         d = new Date(value.substring(0,10) + 'T00:00:00'); // Kunci bacaan 10 aksara terawal sahaja
+      } else {
+         d = new Date(value);
+      }
+      if (isNaN(d.getTime())) return value; // Jika ralat, tunjuk raw string, bukan NaN
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yy = d.getFullYear();
+      return `${dd}/${mm}/${yy}`;
+    }
+    
+    function getLocalTodayIso() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+    function route(screen){
+      ['home','checkin','checkout','collection','reports'].forEach(id=>{
+        document.getElementById('screen-'+id).classList.add('d-none');
+        document.getElementById('nav'+capitalize(id)).classList.remove('active');
+      });
+      document.getElementById('screen-'+screen).classList.remove('d-none');
+      document.getElementById('nav'+capitalize(screen)).classList.add('active');
+
+      if (screen==='home')       loadFiltersAndSchedule();
+      if (screen==='collection') initCollection();
+      if (screen==='checkin')    initCheckin();
+      if (screen==='checkout')   initCheckout();
+      if (screen==='reports')    initReports();
+    }
+
+    let fDatePicker, rStartPicker, rEndPicker;
+    window.addEventListener('load', ()=>{
+      fDatePicker = flatpickr('#fDate', { dateFormat: 'd/m/Y', defaultDate: new Date() });
+      rStartPicker = flatpickr('#repDateStart', { dateFormat: 'd/m/Y' });
+      rEndPicker = flatpickr('#repDateEnd', { dateFormat: 'd/m/Y' });
+      route('home');
+    });
+
+    let colConfigAll = [];
+    let semestersAll = [];
+    let sharedModal;
+
+    function showResult(title, html){
+      document.getElementById('checkinModalTitle').textContent = title;
+      document.getElementById('checkinModalBody').innerHTML = html;
+      (sharedModal || (sharedModal = new bootstrap.Modal(document.getElementById('checkinResultModal')))).show();
+    }
+
+    // ---------------- HOME ----------------
+    function loadFiltersAndSchedule(){
+        const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
+
+        fetch(`/api/schedule-filters/${tenantId}`)
+            .then(res => res.json())
+            .then(f => {
+                if(!f.success) return;
+                const campusSel = document.getElementById('fCampus');
+                const venueSel  = document.getElementById('fVenue');
+                const sessSel   = document.getElementById('fSession');
+
+                campusSel.innerHTML = '<option value="">All</option>';
+                venueSel.innerHTML  = '<option value="">All</option>';
+                sessSel.innerHTML   = '<option value="">All</option>';
+
+                (f.campus||[]).forEach(c=> campusSel.insertAdjacentHTML('beforeend', `<option>${c}</option>`));
+                (f.venue||[]).forEach(v=>  venueSel.insertAdjacentHTML('beforeend',  `<option>${v}</option>`));
+                (f.session||[]).forEach(s=> sessSel.insertAdjacentHTML('beforeend', `<option>${s}</option>`));
             })
+            .catch(err => console.error("Gagal menarik penapis:", err));
+    }
+
+    function clearHomeFilters(){
+      document.getElementById('fCampus').value = '';
+      document.getElementById('fVenue').value  = '';
+      document.getElementById('fSession').value = '';
+      document.getElementById('fSearch').value = '';
+      if (fDatePicker) fDatePicker.clear();
+      document.getElementById('masterHead').innerHTML = '';
+      document.getElementById('masterBody').innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Please set the details and press the <strong>Filter / Search</strong> button to display the schedule.</td></tr>';
+    }
+
+    function loadMasterSchedule(){
+        // Kumpul semua input dari kotak carian
+        const filters = {
+            tenant_id: "c2a6693c-48cc-400b-9baf-ca51dcaef337",
+            date: toIsoFromDisplay(document.getElementById('fDate').value || ''),
+            campus: document.getElementById('fCampus').value || '',
+            venue: document.getElementById('fVenue').value || '',
+            session: document.getElementById('fSession').value || '',
+            q: document.getElementById('fSearch').value || ''
+        };
+
+        const head = document.getElementById('masterHead');
+        const body = document.getElementById('masterBody');
+        head.innerHTML = '';
+        body.innerHTML = '<tr><td class="text-muted text-center py-4">Loading…</td></tr>';
+
+        // Panggil API Master Schedule
+        fetch('/api/master-schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(filters)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if(!res.success) {
+                body.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">${res.message}</td></tr>`;
+                return;
+            }
+            const headers = res.headers || [];
+            head.innerHTML = headers.map(h=>`<th>${h}</th>`).join('');
+
+            if (!res.rows || res.rows.length===0){
+                body.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No data.</td></tr>';
+                return;
+            }
+
+            const iDate   = headers.indexOf('Date');
+            const iCampus = headers.indexOf('Campus');
+            const iSess   = headers.indexOf('Session');
+            const iVenue  = headers.indexOf('Venue');
+            const iID     = headers.indexOf('ID');
+            const iName   = headers.indexOf('Name');
+            const iPost   = headers.indexOf('Post');
+            const iCourses= headers.indexOf('Courses');
+            const iRawCourses = 8; 
+
+            const todayIso = getLocalTodayIso(); 
+
+            // Lukis jadual baris demi baris
+            body.innerHTML = res.rows.map(row=>{
+                const cells = row.slice(0, 8); 
+                if (iDate >= 0 && cells[iDate]) cells[iDate] = toDisplayFromIso(cells[iDate]);
+
+                const rowDateIso = (iDate >= 0) ? row[iDate] : '';
+                // Jadikan nama boleh diklik hanya untuk tarikh HARI INI
+                const canClick = (rowDateIso === todayIso);
+
+                if (iName >= 0 && cells[iName]) {
+                    if (canClick) {
+                        const payload = {
+                            name: cells[iName], staffId: iID >= 0 ? (cells[iID]||'') : '',
+                            role: iPost >= 0 ? (cells[iPost]||'') : '', campus: iCampus >= 0 ? (cells[iCampus]||'') : '',
+                            venue: iVenue >= 0 ? (cells[iVenue]||'') : '', session: iSess >= 0 ? (cells[iSess]||'') : '',
+                            assignedCourses: row[iRawCourses] || [] 
+                        };
+                        const dataAttr = encodeURIComponent(JSON.stringify(payload));
+                        cells[iName] = `<span class="clickable" onclick='prefillFromSchedule("${dataAttr}")'>${cells[iName]}</span>`;
+                    } else {
+                        cells[iName] = `<span class="text-muted">${cells[iName]}</span>`;
+                    }
+                }
+
+                return `<tr>${cells.map((v, idx)=>{
+                    if (idx === iCourses) return `<td>${v || ''}</td>`;
+                    return `<td>${v ?? ''}</td>`;
+                }).join('')}</tr>`;
+            }).join('');
+        })
+        .catch(err => {
+            body.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Gagal menghubungi pelayan.</td></tr>';
+        });
+    }
+
+    // ---------------- REPORTS SUMMARY ----------------
+    let reportsInitialized = false;
+
+    function initReports() {
+      if (reportsInitialized) return;
+      reportsInitialized = true;
+      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
+
+      fetch(`/api/config/${tenantId}`)
+        .then(res => res.json())
+        .then(data => {
+            semestersAll = data.semesters || [];
+            const semSel = document.getElementById('repSemester');
+            semSel.innerHTML = '<option value="">Select Semester...</option>';
+            semestersAll.forEach(s => semSel.insertAdjacentHTML('beforeend', `<option value="${s.name}">${s.name}</option>`));
+        });
+    }
+
+    function onSemesterChange() {
+       const semName = document.getElementById('repSemester').value;
+       const sem = semestersAll.find(s => s.name === semName);
+       if (sem) {
+          rStartPicker.setDate(toDisplayFromIso(sem.start));
+          rEndPicker.setDate(toDisplayFromIso(sem.end));
+       } else {
+          rStartPicker.clear(); rEndPicker.clear();
+       }
+    }
+
+    window.globalReportData = null;
+    window.currentActiveCategory = null;
+
+    const catTitles = {
+        'TOTAL': 'Total Check-In List', 'ONTIME': 'On-Time Check-In List',
+        'GP': 'GP: On-Time Check-In List', 'LATE': 'Late Check-In List',
+        'ABSENT': 'Absent (Not Checked-In) List', 'TOTALOUT': 'Total Check-Out List', 
+        'PENDING': 'Pending Check-Out List', 'RETURNED': 'Script Returned (By Chief) List',
+        'COLLECTION': 'Counter Collection List'
+    };
+
+    function generateReports() {
+       const start = toIsoFromDisplay(document.getElementById('repDateStart').value);
+       const end = toIsoFromDisplay(document.getElementById('repDateEnd').value);
+       
+       if(!start || !end) { showResult('Info', 'Please select a valid date range or semester.'); return; }
+       
+       const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
+       const btn = document.getElementById('btnGenerateRep');
+       btn.textContent = 'Generating...'; btn.disabled = true;
+       document.getElementById('reportDashboard').classList.add('d-none');
+
+       fetch('/api/reports', {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify({ tenant_id: tenantId, startDate: start, endDate: end })
+       })
+       .then(res => res.json())
+       .then(res => {
+           btn.textContent = 'Generate Report'; btn.disabled = false;
+           if (!res.success) { showResult('Error', res.message); return; }
+
+           document.getElementById('statTotal').textContent = res.counts.totalCheckIn;
+           document.getElementById('statOnTime').textContent = res.counts.onTime;
+           document.getElementById('statGP').textContent = res.counts.gpOnTime;
+           document.getElementById('statLate').textContent = res.counts.late;
+           document.getElementById('statAbsent').textContent = res.counts.totalAbsent;
+           document.getElementById('statTotalOut').textContent = res.counts.totalCheckOut;
+           document.getElementById('statPendingOut').textContent = res.counts.pendingCheckOut;
+           document.getElementById('statScripts').textContent = res.counts.returnedScripts;
+           document.getElementById('statCollection').textContent = res.counts.collectionCount;
+
+           window.globalReportData = res.lists;
+           document.getElementById('reportDashboard').classList.remove('d-none');
+           document.getElementById('dynamicReportArea').classList.add('d-none'); 
+           document.querySelectorAll('.report-stat-card').forEach(c => c.classList.remove('active-card'));
+       })
+       .catch(err => {
+           btn.textContent = 'Generate Report'; btn.disabled = false;
+           showResult('Error', `Gagal menjana laporan: ${err.message}`);
+       });
+    }
+
+    function showReportCategory(cat) {
+       if(!window.globalReportData) return;
+       window.currentActiveCategory = cat;
+
+       document.querySelectorAll('.report-stat-card').forEach(c => c.classList.remove('active-card'));
+       document.getElementById('card-' + cat).classList.add('active-card');
+
+       const title = catTitles[cat];
+       document.getElementById('dynamicReportTitle').textContent = title;
+       const head = document.getElementById('reportDataHead');
+       const body = document.getElementById('reportDataBody');
+
+       let cols = ['Date', 'Day', 'Venue', 'Session', 'Staff ID', 'Name', 'Contact No.'];
+       if (cat === 'RETURNED') {
+           cols = ['Date', 'Day', 'Venue', 'Session', 'Staff ID', 'Name', 'Script Returned', 'Contact No.'];
+       } else if (cat === 'COLLECTION') {
+           cols = ['Date', 'Day', 'Collection Venue', 'Role', 'Staff ID', 'Name', 'Contact No.', 'Script Collected'];
+       } else if (cat !== 'ABSENT') {
+           cols = ['Date', 'Day', 'Venue', 'Session', 'Staff ID', 'Name', 'Time/Status', 'Contact No.'];
+       }
+
+       head.innerHTML = `<tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+
+       let list = [];
+       if(cat==='TOTAL') list = window.globalReportData.total;
+       if(cat==='ONTIME') list = window.globalReportData.onTime;
+       if(cat==='GP') list = window.globalReportData.gpOnTime;
+       if(cat==='LATE') list = window.globalReportData.late;
+       if(cat==='ABSENT') list = window.globalReportData.absent;
+       if(cat==='TOTALOUT') list = window.globalReportData.totalOut;
+       if(cat==='PENDING') list = window.globalReportData.pending;
+       if(cat==='RETURNED') list = window.globalReportData.returned;
+       if(cat==='COLLECTION') list = window.globalReportData.collection;
+
+       if(list.length === 0) {
+           body.innerHTML = `<tr><td colspan="${cols.length}" class="text-center text-muted py-3">No records found for ${title}.</td></tr>`;
+       } else {
+           body.innerHTML = list.map(a => {
+               const dt = toDisplayFromIso(a.date);
+               if (cat === 'RETURNED') {
+                   const codes = (a.cCodes||'').split(',');
+                   const descs = (a.cDescs||'').split(',');
+                   let scriptHtml = '<ul class="mb-0 ps-3" style="font-size:0.85rem">';
+                   for(let i=0; i<codes.length; i++) {
+                       if(codes[i].trim() !== '') scriptHtml += `<li><strong>${codes[i].trim()}</strong> - ${descs[i]?descs[i].trim():''}</li>`;
+                   }
+                   scriptHtml += '</ul>';
+                   return `<tr><td>${dt}</td><td>${a.day}</td><td>${a.venue}</td><td>${a.session}</td><td>${a.id}</td><td>${a.name}</td><td>${scriptHtml}</td><td>${a.phone}</td></tr>`;
+               
+               } else if (cat === 'COLLECTION') {
+                   const scriptInfo = `<strong>${a.cCode}</strong> - ${a.cName}<br><span class="text-danger fw-bold">Qty: ${a.qty}</span><br><span class="text-muted" style="font-size:0.8rem">Remarks: ${a.remarks || '-'}</span>`;
+                   return `<tr><td>${dt}</td><td>${a.day}</td><td>${a.venue}</td><td><span class="badge ${a.role==='Representative'?'bg-warning text-dark':'bg-primary'}">${a.role}</span></td><td>${a.id || '-'}</td><td>${a.name}</td><td>${a.phone}</td><td>${scriptInfo}</td></tr>`;
+               
+               } else {
+                   let ext = '';
+                   if(cat !== 'ABSENT') {
+                       let detail = `In: ${a.checkInTime} <br><span class="badge ${a.status==='Late'?'bg-danger':(a.status==='GP: On-Time'?'bg-warning text-dark':'bg-success')}">${a.status}</span>`;
+                       if(cat==='TOTALOUT' || cat==='PENDING') {
+                           detail = `In: ${a.checkInTime} <br>Out: ${a.checkOutTime || '<span class="text-danger">Pending</span>'}`;
+                       }
+                       ext = `<td>${detail}</td>`;
+                   }
+                   return `<tr><td>${dt}</td><td>${a.day}</td><td>${a.venue}</td><td>${a.session}</td><td>${a.id}</td><td>${a.name}</td>${ext}<td>${a.phone}</td></tr>`;
+               }
+           }).join('');
+       }
+       document.getElementById('dynamicReportArea').classList.remove('d-none');
+    }
+
+    function downloadReportPDF() {
+        if(!window.globalReportData || !window.currentActiveCategory) return;
+        
+        const cat = window.currentActiveCategory;
+        const title = catTitles[cat];
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape'); 
+
+        doc.setFontSize(16);
+        doc.setTextColor(0, 44, 95); 
+        doc.text(`EXACT System - ${title}`, 14, 15);
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`Generated on: ${toDisplayFromIso(getLocalTodayIso())}`, 14, 22);
+
+        doc.autoTable({
+            html: '#reportDataTable',
+            startY: 28,
+            styles: { fontSize: 8, cellPadding: 3 },
+            headStyles: { fillColor: [0, 74, 152], textColor: 255 }, 
+            alternateRowStyles: { fillColor: [245, 245, 245] }
+        });
+
+        doc.save(`EXACT_${cat.toLowerCase()}_report.pdf`);
+    }
+
+    function clearReports() {
+       document.getElementById('repSemester').value = '';
+       if (rStartPicker) rStartPicker.clear();
+       if (rEndPicker) rEndPicker.clear();
+       document.getElementById('reportDashboard').classList.add('d-none');
+       document.getElementById('dynamicReportArea').classList.add('d-none');
+    }
+
+    // ---------------- CHECK-IN ----------------
+    let checkinInitialized = false;
+    let pendingPrefill = null;
+
+    function prefillFromSchedule(encoded){
+      pendingPrefill = JSON.parse(decodeURIComponent(encoded));
+      route('checkin');
+    }
+
+    function initCheckin(){
+      if (checkinInitialized) {
+        if (pendingPrefill) autoFillCheckin(pendingPrefill);
+        return;
+      }
+      checkinInitialized = true;
+
+      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
+
+      // GANTIKAN google.script.run DENGAN FETCH API Node.js
+      fetch(`/api/config/${tenantId}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                colConfigAll = data.configs || [];
+                populateCampuses();
+                if (pendingPrefill) { autoFillCheckin(pendingPrefill); pendingPrefill = null; }
+            }
+        })
+        .catch(err => console.error("Gagal menarik konfigurasi:", err));
+
+      document.getElementById('btnClear').onclick = () => {
+          document.getElementById('checkinForm').reset();
+          document.getElementById('courseInfoBox').classList.add('d-none');
+      };
+      
+      document.getElementById('btnCheckin').onclick = onCheckin;
+      document.getElementById('campus').onchange = populateVenues;
+      document.getElementById('venue').onchange  = populateSessions;
+      
+      document.getElementById('btnSearchId').onclick = () => {
+        const id = document.getElementById('staffId').value.trim();
+        if(!id) { showResult('Info', '<p class="mb-0">Please enter a Staff ID first.</p>'); return; }
+
+        const btn = document.getElementById('btnSearchId');
+        btn.textContent = '...'; btn.disabled = true;
+
+        fetch(`/api/staff-today/${tenantId}/${id}`)
             .then(response => response.json())
-            .then(data => {
-                // 4. Paparkan keputusan dari pelayan
-                if(data.success) {
-                    statusDiv.innerHTML = '<span class="text-success fw-bold">✅ ' + data.message + '</span>';
-                    document.getElementById('checkInForm').reset(); // Kosongkan borang
+            .then(result => {
+                btn.textContent = 'Search'; btn.disabled = false;
+                if (result.success && result.data) {
+                    autoFillCheckin(result.data); 
                 } else {
-                    statusDiv.innerHTML = '<span class="text-danger fw-bold">❌ Ralat: ' + data.message + '</span>';
+                    showResult('Not Found', `<p class="mb-0">${result.message}</p>`); 
                 }
             })
             .catch(error => {
-                statusDiv.innerHTML = '<span class="text-danger fw-bold">❌ Gagal berhubung dengan pelayan. Pastikan pelayan dihidupkan.</span>';
+                btn.textContent = 'Search'; btn.disabled = false;
+                showResult('Error', `<p class="mb-0">Gagal berhubung: ${error.message}</p>`);
             });
-        });
-    </script>
+      };
+    }
 
+    function populateCampuses(){
+      const campusSel = document.getElementById('campus');
+      campusSel.innerHTML = '<option value="">Select campus</option>';
+      const campuses = [...new Set(colConfigAll.map(c => c.campus))];
+      campuses.forEach(c => campusSel.insertAdjacentHTML('beforeend', `<option>${c}</option>`));
+    }
+
+    function populateVenues(){
+      const campus = document.getElementById('campus').value;
+      const venueSel = document.getElementById('venue');
+      const sessionSel = document.getElementById('session');
+      venueSel.innerHTML = '<option value="">Select venue</option>';
+      sessionSel.innerHTML = '<option value="">Select session</option>';
+      if (!campus) { venueSel.disabled = true; sessionSel.disabled = true; return; }
+      
+      const venues = [...new Set(colConfigAll.filter(c => c.campus === campus).map(c => c.venue))];
+      venues.forEach(v => venueSel.insertAdjacentHTML('beforeend', `<option>${v}</option>`));
+      venueSel.disabled = false;
+    }
+
+    function populateSessions(){
+      const campus = document.getElementById('campus').value;
+      const venue = document.getElementById('venue').value;
+      const sel = document.getElementById('session');
+      sel.innerHTML = '<option value="">Select session</option>';
+      if (!venue) { sel.disabled = true; return; }
+      const sessions = colConfigAll.filter(c => c.campus===campus && c.venue===venue);
+      sessions.forEach(s => sel.insertAdjacentHTML('beforeend',
+        `<option value="${s.exam_session}">${s.exam_session}${s.start_time?` (Start: ${s.start_time})`:''}</option>`
+      ));
+      sel.disabled = false;
+    }
+
+    function autoFillCheckin(data) {
+      if(!data) return;
+      document.getElementById('name').value    = data.name    || '';
+      document.getElementById('staffId').value = data.staffId || '';
+      if (data.role) document.getElementById('role').value = data.role;
+      if (data.campus){ document.getElementById('campus').value = data.campus; populateVenues(); }
+      if (data.venue){ document.getElementById('venue').value = data.venue; populateSessions(); }
+      if (data.session){ document.getElementById('session').value = data.session; }
+
+      const box = document.getElementById('courseInfoBox');
+      const list = document.getElementById('courseDisplayList');
+      const role = (data.role || '').toLowerCase();
+
+      if (role.includes('invigilator') && data.assignedCourses && data.assignedCourses.length > 0) {
+        box.classList.remove('d-none');
+        list.innerHTML = data.assignedCourses.map(c => `
+          <div class="p-2 border rounded bg-white shadow-sm d-flex flex-column" style="border-left: 5px solid var(--brand-navy) !important;">
+            <div class="fw-bold" style="color: var(--brand-navy); font-size: 1.05rem;">${c.code} — ${c.desc}</div>
+            <div class="text-muted" style="font-size: 0.9rem; margin-top: 4px;">
+              <span class="me-4"><strong>Time:</strong> ${c.st || '-'} to ${c.et || '-'}</span>
+              <span class="me-4"><strong>Seat:</strong> ${c.ss || '-'} to ${c.es || '-'}</span>
+              <span><strong>Total:</strong> ${c.tot || '-'}</span>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        box.classList.add('d-none');
+        list.innerHTML = '';
+      }
+    }
+
+    function onCheckin(){
+      const form = {
+        tenant_id: "c2a6693c-48cc-400b-9baf-ca51dcaef337", 
+        name: document.getElementById('name').value.trim(), 
+        staffId: document.getElementById('staffId').value.trim(),
+        role: document.getElementById('role').value.trim(), 
+        campus: document.getElementById('campus').value,
+        venue: document.getElementById('venue').value, 
+        session: document.getElementById('session').value,
+        remarks: document.getElementById('remarks').value.trim()
+      };
+
+      if (!form.name || !form.staffId || !form.role || !form.campus || !form.venue || !form.session) {
+        showResult('Error','<p class="mb-0">Please fill all required fields.</p>'); 
+        return;
+      }
+
+      const btn = document.getElementById('btnCheckin');
+      btn.disabled = true; 
+      btn.textContent = 'Checking...';
+
+      fetch('/api/checkin', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(form)
+      })
+      .then(response => response.json())
+      .then(resp => {
+          btn.disabled = false; 
+          btn.textContent = 'Check In';
+
+          if (resp.duplicate) {
+              return showResult('Duplicate', `<p class="mb-0">${resp.message}</p>`);
+          }
+
+          if (resp.success) {
+              const t = resp.data?.checkInTime || '';
+              const status = resp.data?.status || '';
+              
+              let statusHtml = '<span class="status-on">On-Time</span>';
+              if (status === 'Late') statusHtml = '<span class="status-late">Late</span>';
+              if (status === 'GP: On-Time') statusHtml = '<span class="status-gp">GP: On-Time</span>';
+              
+              showResult('Success', `<p><strong>${resp.message}</strong></p>${t ? `<p class="mb-1">Time: ${t}</p>` : ''}${status ? `<p class="mb-0">Status: ${statusHtml}</p>` : ''}`);
+              
+              document.getElementById('checkinForm').reset();
+              document.getElementById('courseInfoBox').classList.add('d-none');
+          } else {
+              showResult('Error', `<p class="mb-0">${resp.message || 'Something went wrong.'}</p>`);
+          }
+      })
+      .catch(error => {
+          btn.disabled = false; 
+          btn.textContent = 'Check In';
+          showResult('Error', `<p class="mb-0">Gagal berhubung dengan pelayan: ${error.message}</p>`);
+      });
+    }
+
+    // ---------------- CHECK-OUT ----------------
+    let checkoutInitialized = false;
+    let sessionCourses = []; 
+
+    function initCheckout(){
+      if (checkoutInitialized) return;
+      checkoutInitialized = true;
+
+      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
+
+      // 1. Tarik senarai Kampus
+      fetch(`/api/config/${tenantId}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                colConfigAll = data.configs || [];
+                const cpSel = document.getElementById('coCampus');
+                cpSel.innerHTML = '<option value="">Select campus</option>';
+                [...new Set(colConfigAll.map(c=>c.campus))].forEach(c=> cpSel.insertAdjacentHTML('beforeend', `<option>${c}</option>`));
+            }
+        });
+
+      document.getElementById('coVenue').innerHTML = '<option value="">Select venue</option>';
+      document.getElementById('coSession').innerHTML = '<option value="">Select session</option>';
+      document.getElementById('coVenue').disabled = true;
+      document.getElementById('coSession').disabled = true;
+
+      document.getElementById('coCampus').onchange = onCoCampus;
+      document.getElementById('coVenue').onchange  = onCoVenue;
+      document.getElementById('coSession').onchange = loadAttendeesAndCourses;
+      document.getElementById('coReturn').onchange = onReturnChoice;
+      document.getElementById('btnAddCourse').onclick = () => addCourseRow();
+      
+      document.getElementById('selectAllCo').onchange = (e) => {
+        const isChecked = e.target.checked;
+        const checks = document.querySelectorAll('#coAttendeesBody input[type="checkbox"]:not(:disabled)');
+        checks.forEach(cb => cb.checked = isChecked);
+      };
+    }
+
+    function onCoCampus(){
+      const campus = document.getElementById('coCampus').value;
+      const vSel = document.getElementById('coVenue');
+      const sSel = document.getElementById('coSession');
+
+      vSel.innerHTML = '<option value="">Select venue</option>';
+      sSel.innerHTML = '<option value="">Select session</option>';
+      document.getElementById('coAttendeesBody').innerHTML = '<tr><td colspan="5" class="text-muted text-center py-2">Select campus, venue, and session…</td></tr>';
+
+      if (!campus){ vSel.disabled=true; sSel.disabled=true; return; }
+      
+      [...new Set(colConfigAll.filter(x=>x.campus===campus).map(x=>x.venue))].forEach(v=> vSel.insertAdjacentHTML('beforeend', `<option>${v}</option>`));
+      vSel.disabled = false; sSel.disabled = true;
+    }
+
+    function onCoVenue(){
+      const campus = document.getElementById('coCampus').value;
+      const venue  = document.getElementById('coVenue').value;
+      const sSel = document.getElementById('coSession');
+
+      sSel.innerHTML = '<option value="">Select session</option>';
+      document.getElementById('coAttendeesBody').innerHTML = '<tr><td colspan="5" class="text-muted text-center py-2">Select campus, venue, and session…</td></tr>';
+
+      if (!venue){ sSel.disabled=true; return; }
+      
+      colConfigAll.filter(x=>x.campus===campus && x.venue===venue).forEach(x=> sSel.insertAdjacentHTML('beforeend', `<option>${x.exam_session}</option>`));
+      sSel.disabled = false;
+    }
+
+    function onReturnChoice(){
+      const v = document.getElementById('coReturn').value;
+      const box = document.getElementById('coCourseBox');
+
+      if (v==='Yes'){
+        box.classList.remove('d-none');
+        document.getElementById('courseRows').innerHTML = ''; 
+        enforceChiefInvigilatorOnly(true);
+      } else {
+        box.classList.add('d-none');
+        document.getElementById('courseRows').innerHTML = ''; 
+        enforceChiefInvigilatorOnly(false);
+      }
+    }
+
+    function enforceChiefInvigilatorOnly(isYes){
+      const rows = document.querySelectorAll('#coAttendeesBody tr[data-role]');
+      const selectAll = document.getElementById('selectAllCo');
+      
+      if (isYes) {
+        selectAll.disabled = true;
+        selectAll.checked = false;
+        rows.forEach(tr => {
+          const role = (tr.getAttribute('data-role') || '').toLowerCase();
+          const cb = tr.querySelector('input[type="checkbox"]');
+          if (role !== 'chief invigilator') {
+            tr.style.display = 'none'; 
+            if(cb) cb.checked = false;
+          } else {
+            tr.style.display = '';
+            if(cb) {
+                cb.onchange = () => {
+                  if(cb.checked) {
+                    rows.forEach(other => {
+                      const otherCb = other.querySelector('input[type="checkbox"]');
+                      if(otherCb && otherCb !== cb) otherCb.checked = false;
+                    });
+                    autoLoadCoursesForChief(cb.getAttribute('data-id'));
+                  } else {
+                    document.getElementById('courseRows').innerHTML = '';
+                  }
+                };
+            }
+          }
+        });
+      } else {
+        selectAll.disabled = false;
+        rows.forEach(tr => {
+          tr.style.display = ''; 
+          const cb = tr.querySelector('input[type="checkbox"]');
+          if(cb) cb.onchange = null; 
+        });
+      }
+    }
+
+    function autoLoadCoursesForChief(staffId) {
+       const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
+       document.getElementById('courseRows').innerHTML = '<div class="text-muted mb-2">Auto-loading assigned courses...</div>';
+       
+       fetch(`/api/staff-today/${tenantId}/${staffId}`)
+            .then(res => res.json())
+            .then(res => {
+                document.getElementById('courseRows').innerHTML = '';
+                if(res.success && res.data && res.data.assignedCourses && res.data.assignedCourses.length > 0) {
+                     res.data.assignedCourses.forEach(c => addCourseRow(c.code));
+                } else {
+                     addCourseRow(); 
+                }
+            })
+            .catch(err => {
+                document.getElementById('courseRows').innerHTML = '';
+                addCourseRow();
+            });
+    }
+
+    function loadAttendeesAndCourses(){
+      loadAttendees();
+      loadCoursesForSession();
+    }
+
+    function loadAttendees(){
+      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
+      const campus = document.getElementById('coCampus').value;
+      const venue  = document.getElementById('coVenue').value;
+      const session= document.getElementById('coSession').value;
+      const body   = document.getElementById('coAttendeesBody');
+      const selectAll = document.getElementById('selectAllCo');
+      selectAll.checked = false;
+
+      if (!campus || !venue || !session){
+        body.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-2">Select campus, venue, and session…</td></tr>';
+        return;
+      }
+      body.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-2">Loading…</td></tr>';
+
+      fetch(`/api/attendees/${tenantId}/${campus}/${venue}/${session}`)
+        .then(res => res.json())
+        .then(res => {
+            if(!res.success || !res.attendees || res.attendees.length === 0){
+                body.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-2">No attendees found for this session today.</td></tr>';
+                return;
+            }
+            let i=1;
+            body.innerHTML = res.attendees.map(a=>`
+              <tr data-role="${a.role}">
+                <td>${i++}</td>
+                <td>${a.name||''}</td>
+                <td>${a.id||''}</td>
+                <td>${a.role||''}${a.checkedOut?' <span class="badge bg-secondary ms-1">Out</span>':''}</td>
+                <td class="text-center"><input type="checkbox" class="form-check-input" data-id="${a.id}" ${a.checkedOut?'disabled':''}></td>
+              </tr>
+            `).join('');
+
+            enforceChiefInvigilatorOnly(document.getElementById('coReturn').value === 'Yes');
+        })
+        .catch(err => {
+            body.innerHTML = '<tr><td colspan="5" class="text-danger text-center py-2">Gagal menyemak kehadiran.</td></tr>';
+        });
+    }
+
+    function loadCoursesForSession(){
+      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
+      const campus = document.getElementById('coCampus').value;
+      const venue  = document.getElementById('coVenue').value;
+      const session= document.getElementById('coSession').value;
+      sessionCourses = [];
+
+      if (!campus || !venue || !session) return;
+
+      fetch(`/api/session-courses/${tenantId}/${campus}/${venue}/${session}`)
+        .then(res => res.json())
+        .then(res => {
+            if (res.success) {
+                sessionCourses = res.courses || [];
+            }
+        })
+        .catch(err => console.error("Gagal menarik senarai kursus:", err));
+    }
+
+    function selectedStaffIds(){
+      return Array.from(document.querySelectorAll('#coAttendeesBody input[type="checkbox"]:checked')).map(cb=> cb.getAttribute('data-id'));
+    }
+
+    function addCourseRow(prefillCode = ''){
+      const rows = document.getElementById('courseRows');
+      if (rows.querySelectorAll('.co-course-row').length >= 6) { showResult('Info', '<p class="mb-0">Maximum 6 course rows.</p>'); return; }
+
+      const rowId = 'cr_' + Math.random().toString(16).slice(2);
+      
+      rows.insertAdjacentHTML('beforeend', `
+        <div class="co-course-row" id="${rowId}">
+          <select class="form-select co-course-code"></select>
+          <input class="form-control co-course-desc" readonly>
+          <button type="button" class="btn btn-danger co-btn-remove" title="Remove">
+            <svg width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/><path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/></svg>
+          </button>
+        </div>
+      `);
+
+      const rowEl = document.getElementById(rowId);
+      const sel = rowEl.querySelector('.co-course-code');
+      const desc = rowEl.querySelector('.co-course-desc');
+      
+      buildCourseOptions();
+
+      if(prefillCode) sel.value = prefillCode;
+
+      sel.onchange = ()=>{
+        const opt = sel.selectedOptions[0];
+        desc.value = opt ? (opt.getAttribute('data-desc')||'') : '';
+        buildCourseOptions();
+      };
+
+      rowEl.querySelector('.co-btn-remove').onclick = ()=>{ rowEl.remove(); buildCourseOptions(); };
+      sel.onchange(); 
+    }
+
+    function getSelectedCourseCodes(){
+      return Array.from(document.querySelectorAll('#courseRows .co-course-code')).map(s=>s.value).filter(Boolean);
+    }
+
+    function buildCourseOptions(){
+      const selected = new Set(getSelectedCourseCodes());
+      document.querySelectorAll('#courseRows .co-course-code').forEach(sel=>{
+        const current = sel.value || '';
+        sel.innerHTML = '<option value="">Select code</option>';
+        sessionCourses.forEach(c=>{
+          const isTakenElsewhere = selected.has(c.code) && c.code !== current;
+          sel.insertAdjacentHTML('beforeend', `<option value="${c.code}" data-desc="${(c.desc||'').replace(/"/g,'&quot;')}" ${isTakenElsewhere?'disabled':''}>${c.code}</option>`);
+        });
+        if (current) sel.value = current;
+      });
+    }
+
+    function submitCheckout(){
+      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
+      const campus = document.getElementById('coCampus').value;
+      const venue  = document.getElementById('coVenue').value;
+      const session= document.getElementById('coSession').value;
+      const staffIds = selectedStaffIds();
+      const returnScript = document.getElementById('coReturn').value || '';
+
+      if (!campus || !venue || !session) { showResult('Error','<p class="mb-0">Please select campus, venue and session.</p>'); return; }
+      if (staffIds.length===0) { showResult('Error','<p class="mb-0">Please select at least one staff to check-out.</p>'); return; }
+      if (returnScript === 'Yes' && staffIds.length > 1) { showResult('Error','<p class="mb-0">Return Answer Script = Yes allows only ONE staff selection.</p>'); return; }
+
+      let courseItems = [];
+      if (returnScript === 'Yes') {
+        const codes = getSelectedCourseCodes();
+        if (codes.length === 0) { showResult('Error','<p class="mb-0">Please select at least one course code.</p>'); return; }
+        const map = new Map(sessionCourses.map(x=>[x.code, x.desc]));
+        courseItems = codes.map(code => ({ code, desc: map.get(code) || '' }));
+      }
+
+      const payload = { tenant_id: tenantId, campus, venue, session, staffIds, returnScript, courseItems };
+      const btns = document.querySelectorAll('#screen-checkout button, #screen-checkout select');
+      btns.forEach(b=> b.disabled = true);
+
+      fetch('/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        btns.forEach(b=> b.disabled = false);
+        if (res && res.success){
+          
+          const thankYouMessages = [
+            "Thank you for your commitment today! Have a nice rest.",
+            "Your dedication is greatly appreciated. Enjoy your time off!",
+            "Great job today! Thank you for ensuring a smooth examination.",
+            "We value your hard work and professionalism. Thank you!",
+            "All done! Your professionalism made a difference. Have a relaxing break.",
+            "Thank you for your excellent service. Have a wonderful day ahead!",
+            "Mission accomplished! We truly appreciate your time and effort."
+          ];
+          const randomMsg = thankYouMessages[Math.floor(Math.random() * thankYouMessages.length)];
+          
+          let successHtml = `<p class="mb-3"><strong>Check-out recorded successfully.</strong></p>`;
+          
+          if (returnScript === 'Yes' && courseItems.length > 0) {
+            successHtml += `<div class="p-3 border rounded bg-light mb-3" style="font-size: 0.95rem;">`;
+            successHtml += `<div class="mb-2 fw-bold text-navy">Returned Script(s):</div>`;
+            successHtml += `<ul class="mb-0 ps-3">`;
+            courseItems.forEach(c => {
+              successHtml += `<li><strong>${c.code}</strong> — ${c.desc}</li>`;
+            });
+            successHtml += `</ul></div>`;
+          }
+          
+          successHtml += `<p class="text-secondary mb-0" style="font-size: 0.95rem;"><em>${randomMsg}</em></p>`;
+          
+          showResult('Success', successHtml);
+          loadAttendeesAndCourses();
+          
+        } else {
+          showResult('Error', `<p class="mb-0">${(res && res.message) || 'Failed to record check-out.'}</p>`);
+        }
+      })
+      .catch(err => {
+         btns.forEach(b=> b.disabled = false);
+         showResult('Error', `<p class="mb-0">Gagal menghubungi pelayan: ${err.message}</p>`);
+      });
+    }
+
+    function clearCheckout(){
+      document.getElementById('coCampus').value = '';
+      document.getElementById('coVenue').innerHTML = '<option value="">Select venue</option>';
+      document.getElementById('coSession').innerHTML = '<option value="">Select session</option>';
+      document.getElementById('coVenue').disabled = true;
+      document.getElementById('coSession').disabled = true;
+      document.getElementById('coReturn').value = '';
+      document.getElementById('coCourseBox').classList.add('d-none');
+      document.getElementById('courseRows').innerHTML = '';
+      document.getElementById('coAttendeesBody').innerHTML = '<tr><td colspan="5" class="text-muted text-center py-2">Select campus, venue, and session…</td></tr>';
+      document.getElementById('selectAllCo').checked = false;
+      sessionCourses = [];
+    }
+
+    // ---------------- COLLECTION SCREEN LOGIC ----------------
+    let colSearchedCourses = [];
+    let collectionInitialized = false;
+
+    function initCollection() {
+      if (collectionInitialized) return;
+      collectionInitialized = true;
+      
+      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
+
+      fetch(`/api/config/${tenantId}`)
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                colConfigAll = data.configs || [];
+                const cpSel = document.getElementById('colCampus');
+                cpSel.innerHTML = '<option value="">Select Campus</option>';
+                const campuses = [...new Set(colConfigAll.map(c => c.campus))];
+                campuses.forEach(c => cpSel.insertAdjacentHTML('beforeend', `<option>${c}</option>`));
+            }
+        });
+
+      document.getElementById('colCampus').onchange = onColCampusChange;
+    }
+
+    function onColCampusChange() {
+      const campus = document.getElementById('colCampus').value;
+      const vSel = document.getElementById('colVenue');
+
+      vSel.innerHTML = '<option value="">Select Venue</option>';
+      vSel.disabled = true; 
+
+      if (!campus) return;
+
+      const venues = [...new Set(colConfigAll.filter(c => c.campus === campus).map(c => c.venue))];
+      venues.forEach(v => vSel.insertAdjacentHTML('beforeend', `<option>${v}</option>`));
+      vSel.disabled = false;
+    }
+
+    function searchGlobalCourse() {
+      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
+      const query = document.getElementById('colCourseSearch').value.trim();
+      const btn = document.querySelector('button[onclick="searchGlobalCourse()"]');
+      const selBox = document.getElementById('colCourseSelect');
+      const nameBox = document.getElementById('colCourseName');
+      const hiddenCode = document.getElementById('colCourseCode');
+
+      if (!query) { showResult('Info', 'Please enter a Course Code or Name to search.'); return; }
+
+      nameBox.value = 'Searching...';
+      selBox.classList.add('d-none');
+      btn.disabled = true; btn.textContent = '...';
+
+      fetch(`/api/search-course/${tenantId}?q=${encodeURIComponent(query)}`)
+        .then(res => res.json())
+        .then(res => {
+            btn.disabled = false; btn.textContent = 'Search';
+            colSearchedCourses = res || [];
+
+            if (colSearchedCourses.length === 0) {
+              nameBox.value = ''; nameBox.removeAttribute('readonly'); 
+              hiddenCode.value = query; 
+              showResult('Not Found', `No courses matched "${query}". You can type the name manually.`);
+            } 
+            else if (colSearchedCourses.length === 1) {
+              hiddenCode.value = colSearchedCourses[0].code;
+              nameBox.value = colSearchedCourses[0].desc;
+              nameBox.readOnly = true;
+            } 
+            else {
+              nameBox.value = 'Please select from the dropdown above.';
+              selBox.innerHTML = '<option value="">-- Select matching course --</option>';
+              colSearchedCourses.forEach(c => selBox.insertAdjacentHTML('beforeend', `<option value="${c.code}">${c.code} - ${c.desc}</option>`));
+              selBox.classList.remove('d-none');
+            }
+        })
+        .catch(err => {
+            btn.disabled = false; btn.textContent = 'Search';
+            nameBox.value = '';
+            showResult('Error', `Gagal berhubung dengan pelayan: ${err.message}`);
+        });
+    }
+
+    function selectCourseFromList() {
+       const code = document.getElementById('colCourseSelect').value;
+       const nameBox = document.getElementById('colCourseName');
+       const hiddenCode = document.getElementById('colCourseCode');
+       
+       if(!code) {
+           nameBox.value = 'Please select from the dropdown above.';
+           hiddenCode.value = '';
+           return;
+       }
+       const match = colSearchedCourses.find(c => c.code === code);
+       if(match) {
+           hiddenCode.value = match.code;
+           nameBox.value = match.desc;
+           nameBox.readOnly = true;
+       }
+    }
+
+    function searchGlobalStaff(idInputId, nameInputId) {
+      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
+      const id = document.getElementById(idInputId).value.trim();
+      const btn = document.querySelector(`button[onclick="searchGlobalStaff('${idInputId}', '${nameInputId}')"]`);
+      if (!id) { showResult('Info', 'Please enter an ID to search.'); return; }
+      
+      document.getElementById(nameInputId).value = 'Searching...';
+      btn.disabled = true; btn.textContent = '...';
+
+      fetch(`/api/search-staff/${tenantId}/${id}`)
+        .then(res => {
+            if (res.status === 404) return null;
+            return res.json();
+        })
+        .then(res => {
+            btn.disabled = false; btn.textContent = 'Search ID';
+            if (res && res.name) {
+                document.getElementById(nameInputId).value = res.name;
+            } else {
+                document.getElementById(nameInputId).value = '';
+                showResult('Not Found', `Staff ID ${id} tidak ditemui dalam Jadual Tugas. Anda boleh taip nama secara manual.`);
+            }
+        })
+        .catch(err => {
+            btn.disabled = false; btn.textContent = 'Search ID';
+            document.getElementById(nameInputId).value = '';
+            showResult('Error', `Gagal mencari staf: ${err.message}`);
+        });
+    }
+
+    function submitCollection() {
+      if (!document.getElementById('colDeclaration').checked) {
+        showResult('Declaration Required', 'Please tick the declaration box to acknowledge your responsibilities before submitting.'); 
+        return;
+      }
+
+      const codeToSubmit = document.getElementById('colCourseCode').value.trim() || document.getElementById('colCourseSearch').value.trim();
+
+      const form = {
+        tenant_id: "c2a6693c-48cc-400b-9baf-ca51dcaef337",
+        campus: document.getElementById('colCampus').value,
+        venue: document.getElementById('colVenue').value,
+        courseCode: codeToSubmit,
+        courseName: document.getElementById('colCourseName').value.trim(),
+        quantity: document.getElementById('colQuantity').value,
+        remarks: document.getElementById('colRemarks').value.trim(),
+        name: document.getElementById('colName').value.trim(),
+        staffId: document.getElementById('colStaffId').value.trim(),
+        repName: document.getElementById('colRepName').value.trim(),
+        repId: document.getElementById('colRepId').value.trim(),
+        phone: document.getElementById('colPhone').value.trim()
+      };
+
+      if (!form.campus || !form.venue || !form.courseCode || !form.quantity || !form.phone) {
+        showResult('Error', 'Please fill in Location, Course Details, and Contact No.'); return;
+      }
+      
+      if (form.name && form.repName) {
+        showResult('Error', 'Please fill in ONLY ONE: either Self (Name) OR Representative. Do not fill both.'); return;
+      }
+      if (!form.name && !form.repName) {
+        showResult('Error', 'Please fill in either Self (Name) OR Representative.'); return;
+      }
+      
+      const btn = document.getElementById('btnSubmitCol');
+      btn.disabled = true; btn.textContent = 'Submitting...';
+
+      fetch('/api/collection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(form)
+      })
+      .then(res => res.json())
+      .then(res => {
+          btn.disabled = false; btn.textContent = 'Confirm Collection';
+          if (res && res.success) {
+            const detailsHtml = `
+              <p class="mb-2"><strong>Answer script collection recorded successfully.</strong></p>
+              <div class="p-3 border rounded bg-light" style="font-size: 0.95rem;">
+                <div class="mb-1"><strong>Course Code:</strong> <span class="text-navy">${form.courseCode}</span></div>
+                <div class="mb-1"><strong>Course Name:</strong> <span class="text-navy">${form.courseName}</span></div>
+                <div class="mb-0"><strong>Quantity:</strong> <span class="text-danger fw-bold">${form.quantity}</span> Booklet(s)</div>
+              </div>
+            `;
+            showResult('Success', detailsHtml);
+            clearCollectionForm();
+          } else {
+            showResult('Error', res.message || 'Submission failed.');
+          }
+      })
+      .catch(err => {
+          btn.disabled = false; btn.textContent = 'Confirm Collection';
+          showResult('Error', `Gagal menghubungi pelayan: ${err.message}`);
+      });
+    }
+
+    function clearCollectionForm() {
+      document.getElementById('collectionForm').reset();
+      document.getElementById('colVenue').disabled = true;
+      document.getElementById('colCourseName').readOnly = true;
+      document.getElementById('colCourseSelect').classList.add('d-none');
+      document.getElementById('colCourseCode').value = '';
+    }
+  </script>
 </body>
 </html>
