@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EXACT - Admin Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f4f6f8; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .login-card { max-width: 400px; width: 90%; padding: 40px; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    .btn-login { background-color: #004A98; border-color: #004A98; color: white; }
+    .btn-login:hover { background-color: #003366; border-color: #003366; color: white; }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+    <div class="text-center mb-4">
+        <h3 style="color: #004A98; font-weight: bold;">EXACT Admin</h3>
+        <p class="text-muted small">Sila log masuk untuk mengakses portal.</p>
+    </div>
+    
+    <div id="errorMsg" class="text-danger text-center mb-3 fw-bold small"></div>
+    
+    <form id="loginForm">
+      <div class="mb-3">
+        <label class="form-label fw-bold">ID Pengguna</label>
+        <input type="text" id="username" class="form-control" placeholder="Masukkan ID" required>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-bold">Kata Laluan</label>
+        <input type="password" id="password" class="form-control" placeholder="Masukkan Kata Laluan" required>
+      </div>
+      <button type="submit" class="btn btn-login w-100 fw-bold py-2" id="btnLogin">Log Masuk</button>
+    </form>
+    <div class="text-center mt-3">
+        <a href="index.html" class="text-decoration-none small text-muted">Kembali ke Halaman Utama</a>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const u = document.getElementById('username').value;
+      const p = document.getElementById('password').value;
+      const btn = document.getElementById('btnLogin');
+
+      btn.disabled = true;
+      btn.textContent = 'Mengesahkan...';
+      document.getElementById('errorMsg').innerText = '';
+
+      fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: u, password: p })
+      })
+      .then(res => res.json())
+      .then(data => {
+        btn.disabled = false;
+        btn.textContent = 'Log Masuk';
+        
+        if(data.success) {
+            // 1. Simpan Token Keselamatan
+            sessionStorage.setItem('adminToken', data.token);
+            
+            // 2. Simpan ID & Nama Universiti (INI YANG TERTINGGAL TADI!)
+            sessionStorage.setItem('tenantId', data.tenant_id);
+            sessionStorage.setItem('uniName', data.uni_name);
+            
+            window.location.href = 'admin.html';
+        } else {
+            document.getElementById('errorMsg').innerText = data.message;
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.textContent = 'Log Masuk';
+        document.getElementById('errorMsg').innerText = 'Gagal menghubungi pelayan.';
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,6 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
+const xlsx = require('xlsx');
+
+// Tetapan multer untuk menyimpan fail secara sementara di dalam memori
+const upload = multer({ storage: multer.memoryStorage() });
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
@@ -204,32 +209,51 @@ app.get('/api/schedule-filters/:tenant_id', async (req, res) => {
 });
 
 // =====================================================
-// API 5: Tarik Master Schedule (Home Table)
+// API 5: Tarik Master Schedule (Home Table) - VERSI 30 HARI
 // =====================================================
 app.post('/api/master-schedule', async (req, res) => {
     const { tenant_id, date, campus, venue, session, q } = req.body;
-
-    // Bina arahan carian Supabase
+    
     let query = supabase.from('duty_schedule').select('*').eq('tenant_id', tenant_id);
+    
+    // --- LOGIK "TINGKAP MASA" (60 Hari Lepas - 30 Hari Ke Hadapan) ---
+    if (date) {
+        query = query.eq('exam_date', date);
+    } else {
+        const today = new Date();
+        
+        // 60 Hari Ke Belakang
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - 60); 
+        const startStr = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
 
-    // Tambah penapis jika pengguna memilihnya di antaramuka
-    if (date) query = query.eq('exam_date', date);
+        // 30 Hari Ke Hadapan
+        const endDate = new Date(today);
+        endDate.setDate(today.getDate() + 30);
+        const endStr = endDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Singapore' });
+
+        query = query.gte('exam_date', startStr).lte('exam_date', endStr);
+    }
+    // ---------------------------------------------------------------
+
     if (campus) query = query.eq('campus', campus);
     if (venue) query = query.eq('venue', venue);
     if (session) query = query.eq('exam_session', session);
+    
+    // Fungsi carian teks (Nama, ID, Kod Subjek)
+    if (q) {
+        query = query.or(`staff_name.ilike.%${q}%,staff_id.ilike.%${q}%,course_code.ilike.%${q}%,course_desc.ilike.%${q}%`);
+    }
+    
+    // Letakkan limit sebagai langkah keselamatan tambahan pelayan
+    query = query.limit(5000);
 
     const { data, error } = await query;
     if (error) return res.status(400).json({ success: false, message: error.message });
 
-    // Kumpulkan kursus jika staf mengawas lebih dari 1 kertas (Sama seperti logik Google Script lama)
+    // --- PROSES MENYUSUN DATA ---
     const grouped = new Map();
     data.forEach(r => {
-        // Carian teks bebas (Name / ID / Course)
-        if (q) {
-            const hay = [r.course_code, r.course_desc, r.staff_id, r.staff_name].join(' ').toLowerCase();
-            if (!hay.includes(q.toLowerCase())) return; 
-        }
-
         const key = `${r.exam_date}||${r.campus}||${r.exam_session}||${r.venue}||${r.staff_id}||${r.staff_name}||${r.role}`;
         if (!grouped.has(key)) {
             grouped.set(key, {
@@ -238,9 +262,7 @@ app.post('/api/master-schedule', async (req, res) => {
                 courses: new Map(), courseObjects: []
             });
         }
-
         if (r.course_code) {
-            // Buang saat dari format masa SQL (cth: 09:00:00 -> 09:00)
             const st = r.start_time ? r.start_time.substring(0, 5) : '';
             const et = r.end_time ? r.end_time.substring(0, 5) : '';
             
@@ -266,9 +288,9 @@ app.post('/api/master-schedule', async (req, res) => {
 
     // Susun mengikut tarikh
     rows.sort((a,b) => String(a[0]).localeCompare(String(b[0])) || String(a[1]).localeCompare(String(b[1])));
-
     res.status(200).json({ success: true, headers: outHeaders, rows });
 });
+
 // =====================================================
 // API 6: Senarai Kehadiran Hari Ini (Untuk Check-Out)
 // =====================================================
@@ -594,6 +616,234 @@ app.post('/api/reports', async (req, res) => {
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
+});
+
+// =====================================================
+// API 13: Muat Naik Jadual Tugas (Modul Admin) - VERSI KEBAL
+// =====================================================
+app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, res) => {
+    try {
+        const tenant_id = req.body.tenant_id;
+        if (!req.file) return res.status(400).json({ success: false, message: 'Sila muat naik fail Excel.' });
+        if (!tenant_id) return res.status(400).json({ success: false, message: 'Tenant ID diperlukan.' });
+
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0]; 
+        const rawData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null });
+
+        // Penterjemah Tarikh Excel
+        const formatExcelDate = (excelDate) => {
+            if (!excelDate) return null;
+            if (typeof excelDate === 'number') {
+                const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
+                return date.toISOString().split('T')[0];
+            }
+            return String(excelDate);
+        };
+
+        // Penterjemah Masa Excel (Super Kebal)
+        const formatExcelTime = (excelTime) => {
+            // 1. Tapis data kosong atau simbol pagar Excel
+            if (!excelTime || excelTime === '####') return null;
+            
+            // 2. Jika masa dalam bentuk nombor perpuluhan Excel
+            if (typeof excelTime === 'number') {
+                let totalSeconds = Math.round(excelTime * 86400);
+                let hours = Math.floor(totalSeconds / 3600);
+                let minutes = Math.floor((totalSeconds % 3600) / 60);
+                let seconds = totalSeconds % 60;
+                return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+            
+            // 3. Jika masa dalam bentuk teks, pastikan ia ada rupa masa (cth: "09:00")
+            const strTime = String(excelTime).trim();
+            if (/^\d{1,2}:\d{2}/.test(strTime)) {
+                return strTime;
+            }
+            
+            // Jika data merepek lain, jadikan NULL sahaja
+            return null;
+        };
+
+        // FUNGSI PENCARI TAJUK (Abaikan huruf besar/kecil & space berlebihan)
+        const getVal = (row, possibleKeys) => {
+            const rowKeys = Object.keys(row);
+            for (let key of rowKeys) {
+                const cleanKey = key.trim().toLowerCase().replace(/\s+/g, ' '); // Bersihkan nama lajur Excel
+                for (let pKey of possibleKeys) {
+                    if (cleanKey === pKey.toLowerCase()) {
+                        return row[key] !== null ? row[key] : null;
+                    }
+                }
+            }
+            return null;
+        };
+
+        // 2. Formatkan data Excel
+        const formattedData = rawData.map(row => ({
+            tenant_id: tenant_id,
+            exam_date: formatExcelDate(getVal(row, ['date', 'exam date', 'tarikh'])), 
+            exam_session: getVal(row, ['session', 'sesi', 'exam session']),
+            campus: getVal(row, ['campus', 'kampus']),
+            venue: getVal(row, ['venue', 'dewan', 'lokasi']),
+            
+            // Senaraikan pelbagai kemungkinan ejaan tajuk lajur
+            course_code: getVal(row, ['course code', 'subject code', 'kod kursus', 'kod subjek', 'Course']),
+            course_desc: getVal(row, ['course name', 'course description', 'Course Description', 'subject name', 'nama kursus']),
+            
+            start_time: formatExcelTime(getVal(row, ['start time', 'masa mula', 'time start', 'Start Time'])),
+            end_time: formatExcelTime(getVal(row, ['end time', 'masa tamat', 'time end', 'Time To'])),
+            start_seat: String(getVal(row, ['start seat', 'mula tempat duduk', 'seat start', 'Seating From']) || ''),
+            end_seat: String(getVal(row, ['end seat', 'tamat tempat duduk', 'seat end', 'Seating To']) || ''),
+            total_student: String(getVal(row, ['total student', 'jumlah pelajar', 'total students', 'Total Student']) || ''),
+
+            staff_id: String(getVal(row, ['staff id', 'id staf', 'id pengawas', 'Staff ID']) || ''),
+            staff_name: getVal(row, ['name', 'staff name', 'nama', 'nama staf', 'nama pengawas', 'Name']),
+            role: getVal(row, ['role', 'peranan', 'jawatan', 'Role']),
+            contact_number: String(getVal(row, ['phone', 'contact number', 'no tel', 'no telefon', 'Contact Number']) || '')
+        }));
+
+        // 3. Masukkan data ke dalam pangkalan data
+        const { error } = await supabase.from('duty_schedule').insert(formattedData);
+
+        if (error) throw error;
+        
+        res.status(200).json({ 
+            success: true, 
+            message: `${formattedData.length} baris rekod jadual berjaya dimuat naik untuk Tenant ID: ${tenant_id}!` 
+        });
+
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+// =====================================================
+// API 14: Log Masuk Admin (Sistem Multi-Tenant)
+// =====================================================
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    // Pangkalan Data Sementara untuk Pelanggan Anda
+    const tenants = {
+        'admin_umpsa': { 
+            pass: 'umpsa2026', 
+            tenant_id: 'c2a6693c-48cc-400b-9baf-ca51dcaef337', 
+            name: 'Universiti Malaysia Pahang Al-Sultan Abdullah (UMPSA)' 
+        },
+        'admin_uitm': { 
+            pass: 'uitm2026', 
+            tenant_id: 'tenant-id-untuk-uitm-nanti', 
+            name: 'Universiti Teknologi MARA (UiTM)' 
+        }
+        // Anda boleh tambah beratus universiti di sini kelak!
+    };
+
+    const user = tenants[username];
+
+    if (user && user.pass === password) {
+        // Jika berjaya, hantar token beserta tenant_id rahsia mereka!
+        res.status(200).json({ 
+            success: true, 
+            token: 'kunci-rahsia-exact-2026',
+            tenant_id: user.tenant_id,
+            uni_name: user.name
+        });
+    } else {
+        res.status(401).json({ success: false, message: 'ID Pengguna atau Kata Laluan salah!' });
+    }
+});
+// =====================================================
+// API 15: Tambah Semester Baharu (Modul Admin)
+// =====================================================
+app.post('/api/admin/semester', async (req, res) => {
+    try {
+        const { tenant_id, name, start_date, end_date } = req.body;
+        if (!tenant_id || !name || !start_date || !end_date) {
+            return res.status(400).json({ success: false, message: 'Maklumat tidak lengkap.' });
+        }
+
+        const { error } = await supabase.from('semesters').insert([{ tenant_id, name, start_date, end_date }]);
+        if (error) throw error;
+
+        res.status(200).json({ success: true, message: 'Semester baharu berjaya ditambah!' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// =====================================================
+// API 16: Tambah Konfigurasi Lokasi & Sesi (Modul Admin)
+// =====================================================
+app.post('/api/admin/config', async (req, res) => {
+    try {
+        const { tenant_id, campus, venue, exam_session, start_time } = req.body;
+        if (!tenant_id || !campus || !venue || !exam_session) {
+            return res.status(400).json({ success: false, message: 'Maklumat kampus, dewan, dan sesi wajib diisi.' });
+        }
+
+        const { error } = await supabase.from('config').insert([{ tenant_id, campus, venue, exam_session, start_time }]);
+        if (error) throw error;
+
+        res.status(200).json({ success: true, message: 'Tetapan lokasi/sesi berjaya ditambah!' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// =====================================================
+// API 17 & 18: Baca & Padam Semester (Admin)
+// =====================================================
+app.get('/api/admin/semesters/:tenant_id', async (req, res) => {
+    const { data, error } = await supabase.from('semesters').select('*').eq('tenant_id', req.params.tenant_id).order('start_date', { ascending: false });
+    if (error) return res.status(400).json({ success: false, message: error.message });
+    res.status(200).json({ success: true, data });
+});
+
+app.delete('/api/admin/semester/:id', async (req, res) => {
+    const { error } = await supabase.from('semesters').delete().eq('id', req.params.id);
+    if (error) return res.status(400).json({ success: false, message: error.message });
+    res.status(200).json({ success: true });
+});
+
+// =====================================================
+// API 19 & 20: Baca & Padam Lokasi/Sesi (Admin)
+// =====================================================
+app.get('/api/admin/configs/:tenant_id', async (req, res) => {
+    const { data, error } = await supabase.from('config').select('*').eq('tenant_id', req.params.tenant_id).order('campus').order('venue');
+    if (error) return res.status(400).json({ success: false, message: error.message });
+    res.status(200).json({ success: true, data });
+});
+
+app.delete('/api/admin/config/:id', async (req, res) => {
+    const { error } = await supabase.from('config').delete().eq('id', req.params.id);
+    if (error) return res.status(400).json({ success: false, message: error.message });
+    res.status(200).json({ success: true });
+});
+
+// =====================================================
+// API 21: Kemaskini Semester (Admin)
+// =====================================================
+app.put('/api/admin/semester/:id', async (req, res) => {
+    const { name, start_date, end_date } = req.body;
+    const { error } = await supabase.from('semesters')
+        .update({ name, start_date, end_date })
+        .eq('id', req.params.id);
+        
+    if (error) return res.status(400).json({ success: false, message: error.message });
+    res.status(200).json({ success: true, message: 'Semester berjaya dikemas kini!' });
+});
+
+// =====================================================
+// API 22: Kemaskini Lokasi & Sesi (Admin)
+// =====================================================
+app.put('/api/admin/config/:id', async (req, res) => {
+    const { campus, venue, exam_session, start_time } = req.body;
+    const { error } = await supabase.from('config')
+        .update({ campus, venue, exam_session, start_time })
+        .eq('id', req.params.id);
+        
+    if (error) return res.status(400).json({ success: false, message: error.message });
+    res.status(200).json({ success: true, message: 'Lokasi/Sesi berjaya dikemas kini!' });
 });
 
 // Hidupkan Pelayan

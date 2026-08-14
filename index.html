@@ -112,7 +112,7 @@
         <div class="row g-2 align-items-end mt-2">
           <div class="col-md-6">
             <label class="form-label">Search (Name / ID / Course)</label>
-            <input id="fSearch" class="form-control" placeholder="e.g. 2477, Nur, BPM ...">
+            <input id="fSearch" class="form-control" placeholder="e.g. 2477, Nur, BPM ..." onkeydown="if(event.keyCode === 13) { loadMasterSchedule(); return false; }">
           </div>
           <div class="col-md-6">
              <div class="d-flex gap-2">
@@ -1523,6 +1523,7 @@
       document.getElementById('colCourseSelect').classList.add('d-none');
       document.getElementById('colCourseCode').value = '';
     }
+    
   </script>
 </body>
 </html>

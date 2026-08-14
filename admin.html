@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EXACT - Admin Portal</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script>
+    // PENGAWAL KESELAMATAN
+    if (sessionStorage.getItem('adminToken') !== 'kunci-rahsia-exact-2026') {
+        window.location.replace('admin-login.html');
+    }
+  </script>
+  <style>
+    body { background-color: #f4f6f8; padding-bottom: 50px; }
+    .admin-header { background-color: #004A98; color: white; padding: 20px 0; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .admin-card { max-width: 900px; margin: 0 auto; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 10px; background: #fff; }
+    .nav-tabs .nav-link.active { font-weight: bold; color: #004A98; border-bottom: 3px solid #004A98; }
+    .nav-tabs .nav-link { color: #6c757d; border: none; }
+    .table th { background-color: #f8f9fa; color: #004A98; }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="admin-header">
+    <div class="container d-flex justify-content-between align-items-center">
+        <h3 class="m-0 fw-bold header-title">EXACT Admin Portal</h3>
+        <button class="btn btn-danger btn-sm fw-bold" onclick="logout()">Log Keluar</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="admin-card">
+      
+      <!-- NAVIGATION TABS -->
+      <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab">1. Muat Naik Jadual</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="semester-tab" data-bs-toggle="tab" data-bs-target="#semester" type="button" role="tab" onclick="loadSemesters()">2. Urus Semester</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config" type="button" role="tab" onclick="loadConfigs()">3. Urus Lokasi & Sesi</button>
+        </li>
+      </ul>
+
+      <div class="tab-content" id="adminTabsContent">
+        
+        <!-- TAB 1: MUAT NAIK JADUAL -->
+        <div class="tab-pane fade show active" id="upload" role="tabpanel">
+            <div class="alert alert-info small">
+              <strong>Format Excel:</strong> Pastikan tajuk lajur (header) Excel anda mempunyai ejaan yang tepat: Date, Session, Campus, Venue, Course Code, Course Name, Staff ID, Name, Role, Phone, Start Time, End Time.
+            </div>
+            <form id="uploadForm">
+              <div class="mb-4 mt-3">
+                <label class="form-label fw-bold">Muat Naik Fail Excel (Jadual Tugas)</label>
+                <input class="form-control" type="file" id="excelFile" accept=".xlsx, .xls" required>
+              </div>
+              <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnUpload">Muat Naik Jadual</button>
+            </form>
+            <div id="uploadResult" class="mt-3 text-center fw-bold"></div>
+        </div>
+
+        <!-- TAB 2: URUS SEMESTER -->
+        <div class="tab-pane fade" id="semester" role="tabpanel">
+            <form id="semesterForm">
+              <div class="mb-3 mt-3">
+                <label class="form-label fw-bold">Nama Semester</label>
+                <input type="text" id="semName" class="form-control" placeholder="Contoh: Semester 2 2025/2026" required>
+              </div>
+              <div class="row mb-4">
+                  <div class="col-md-6">
+                      <label class="form-label fw-bold">Tarikh Mula Peperiksaan</label>
+                      <input type="date" id="semStart" class="form-control" required>
+                  </div>
+                  <div class="col-md-6">
+                      <label class="form-label fw-bold">Tarikh Tamat Peperiksaan</label>
+                      <input type="date" id="semEnd" class="form-control" required>
+                  </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success flex-grow-1 fw-bold" id="btnSem">Simpan Semester</button>
+                <button type="button" class="btn btn-secondary d-none" id="btnCancelSem" onclick="cancelEditSem()">Batal Kemaskini</button>
+              </div>
+            </form>
+            <div id="semResult" class="mt-2 mb-4 text-center fw-bold"></div>
+            
+            <hr>
+            <h5 class="fw-bold mt-4" style="color: #004A98;">Senarai Semester Berdaftar</h5>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered align-middle mt-2">
+                <thead><tr><th>Nama Semester</th><th>Tarikh Mula</th><th>Tarikh Tamat</th><th class="text-center" style="width: 180px;">Tindakan</th></tr></thead>
+                <tbody id="semTableBody"><tr><td colspan="4" class="text-center text-muted">Sila tunggu...</td></tr></tbody>
+              </table>
+            </div>
+        </div>
+
+        <!-- TAB 3: URUS LOKASI & SESI -->
+        <div class="tab-pane fade" id="config" role="tabpanel">
+            <form id="configForm">
+              <div class="row mb-3 mt-3">
+                  <div class="col-md-6">
+                      <label class="form-label fw-bold">Kampus</label>
+                      <input type="text" id="confCampus" class="form-control" placeholder="Contoh: Pekan" required>
+                  </div>
+                  <div class="col-md-6">
+                      <label class="form-label fw-bold">Nama Dewan (Venue)</label>
+                      <input type="text" id="confVenue" class="form-control" placeholder="Contoh: BAP (P)" required>
+                  </div>
+              </div>
+              <div class="row mb-4">
+                  <div class="col-md-6">
+                      <label class="form-label fw-bold">Nama Sesi Peperiksaan</label>
+                      <input type="text" id="confSession" class="form-control" placeholder="Contoh: Morning" required>
+                  </div>
+                  <div class="col-md-6">
+                      <label class="form-label fw-bold">Waktu Mula Sesi</label>
+                      <input type="time" id="confTime" class="form-control">
+                      <small class="text-muted">Pilihan (Untuk pengiraan On-Time)</small>
+                  </div>
+              </div>
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-warning text-dark flex-grow-1 fw-bold" id="btnConf">Simpan Lokasi/Sesi</button>
+                <button type="button" class="btn btn-secondary d-none" id="btnCancelConf" onclick="cancelEditConf()">Batal Kemaskini</button>
+              </div>
+            </form>
+            <div id="confResult" class="mt-2 mb-4 text-center fw-bold"></div>
+
+            <hr>
+            <h5 class="fw-bold mt-4" style="color: #004A98;">Senarai Lokasi & Sesi Berdaftar</h5>
+            <div class="table-responsive">
+              <table class="table table-sm table-bordered align-middle mt-2">
+                <thead><tr><th>Kampus</th><th>Dewan (Venue)</th><th>Sesi</th><th>Waktu Mula</th><th class="text-center" style="width: 180px;">Tindakan</th></tr></thead>
+                <tbody id="confTableBody"><tr><td colspan="5" class="text-center text-muted">Sila tunggu...</td></tr></tbody>
+              </table>
+            </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Sistem kini menarik ID rahsia terus dari memori log masuk!
+    const MAIN_TENANT = sessionStorage.getItem('tenantId');
+    let editingSemId = null;
+    let editingConfId = null;
+
+    // Tulis nama universiti di header supaya pelanggan tahu mereka di ruang yang betul
+    window.addEventListener('load', () => {
+        const uniName = sessionStorage.getItem('uniName');
+        if (uniName) {
+            document.querySelector('.header-title').innerHTML = `EXACT Admin Portal <br><span style="font-size:1rem; font-weight:normal;">${uniName}</span>`;
+        }
+    });
+
+    function logout() {
+        sessionStorage.removeItem('adminToken');
+        sessionStorage.removeItem('tenantId');
+        sessionStorage.removeItem('uniName');
+        window.location.replace('admin-login.html');
+    }
+
+    // --- TAB 1: MUAT NAIK JADUAL ---
+    document.getElementById('uploadForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('excelFile');
+      const btn = document.getElementById('btnUpload');
+      const resultDiv = document.getElementById('uploadResult');
+      if(fileInput.files.length === 0) return;
+
+      const formData = new FormData();
+      formData.append('excelFile', fileInput.files[0]);
+      // Hantar Tenant ID automatik ke server
+      formData.append('tenant_id', MAIN_TENANT);
+
+      btn.disabled = true; btn.textContent = 'Memproses...'; resultDiv.innerHTML = '';
+      fetch('/api/admin/upload-schedule', { method: 'POST', body: formData })
+      .then(res => res.json())
+      .then(data => {
+        btn.disabled = false; btn.textContent = 'Muat Naik Jadual';
+        if(data.success) {
+            resultDiv.innerHTML = `<span class="text-success">${data.message}</span>`;
+            document.getElementById('uploadForm').reset();
+        } else {
+            resultDiv.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`;
+        }
+      }).catch(err => {
+        btn.disabled = false; btn.textContent = 'Muat Naik Jadual';
+        resultDiv.innerHTML = `<span class="text-danger">Gagal menghubungi pelayan.</span>`;
+      });
+    });
+
+    // --- TAB 2: SEMESTER ---
+    function loadSemesters() {
+        const tbody = document.getElementById('semTableBody');
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Memuatkan...</td></tr>';
+        fetch(`/api/admin/semesters/${MAIN_TENANT}`)
+        .then(res => res.json())
+        .then(res => {
+            if(!res.success || res.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Tiada semester direkodkan.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = res.data.map(s => `
+                <tr>
+                    <td>${s.name}</td><td>${s.start_date}</td><td>${s.end_date}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="triggerEditSem('${s.id}', '${s.name.replace(/'/g, "\\'")}', '${s.start_date}', '${s.end_date}')">✏️ Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSemester('${s.id}')">🗑️ Padam</button>
+                    </td>
+                </tr>
+            `).join('');
+        });
+    }
+
+    function triggerEditSem(id, name, start, end) {
+        editingSemId = id;
+        document.getElementById('semName').value = name;
+        document.getElementById('semStart').value = start;
+        document.getElementById('semEnd').value = end;
+        
+        document.getElementById('btnSem').textContent = 'Kemas Kini Semester';
+        document.getElementById('btnSem').classList.replace('btn-success', 'btn-primary');
+        document.getElementById('btnCancelSem').classList.remove('d-none');
+        window.scrollTo(0, 0); 
+    }
+
+    function cancelEditSem() {
+        editingSemId = null;
+        document.getElementById('semesterForm').reset();
+        document.getElementById('btnSem').textContent = 'Simpan Semester';
+        document.getElementById('btnSem').classList.replace('btn-primary', 'btn-success');
+        document.getElementById('btnCancelSem').classList.add('d-none');
+    }
+
+    document.getElementById('semesterForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const payload = {
+          tenant_id: MAIN_TENANT, // Guna Tenant ID dari memori
+          name: document.getElementById('semName').value,
+          start_date: document.getElementById('semStart').value,
+          end_date: document.getElementById('semEnd').value
+      };
+      
+      const btn = document.getElementById('btnSem');
+      const url = editingSemId ? `/api/admin/semester/${editingSemId}` : '/api/admin/semester';
+      const method = editingSemId ? 'PUT' : 'POST';
+
+      btn.disabled = true; btn.textContent = 'Menyimpan...'; 
+      fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(res => res.json())
+      .then(data => {
+          cancelEditSem();
+          btn.disabled = false;
+          loadSemesters(); 
+      });
+    });
+
+    function deleteSemester(id) {
+        if(!confirm("Anda pasti mahu memadam semester ini?")) return;
+        fetch(`/api/admin/semester/${id}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(() => loadSemesters());
+    }
+
+    // --- TAB 3: CONFIG (LOKASI & SESI) ---
+    function loadConfigs() {
+        const tbody = document.getElementById('confTableBody');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Memuatkan...</td></tr>';
+        fetch(`/api/admin/configs/${MAIN_TENANT}`)
+        .then(res => res.json())
+        .then(res => {
+            if(!res.success || res.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tiada dewan/sesi direkodkan.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = res.data.map(c => `
+                <tr>
+                    <td>${c.campus}</td><td>${c.venue}</td><td>${c.exam_session}</td><td>${c.start_time || '-'}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="triggerEditConf('${c.id}', '${c.campus.replace(/'/g, "\\'")}', '${c.venue.replace(/'/g, "\\'")}', '${c.exam_session.replace(/'/g, "\\'")}', '${c.start_time || ''}')">✏️ Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteConfig('${c.id}')">🗑️ Padam</button>
+                    </td>
+                </tr>
+            `).join('');
+        });
+    }
+
+    function triggerEditConf(id, campus, venue, session, time) {
+        editingConfId = id;
+        document.getElementById('confCampus').value = campus;
+        document.getElementById('confVenue').value = venue;
+        document.getElementById('confSession').value = session;
+        document.getElementById('confTime').value = time;
+        
+        document.getElementById('btnConf').textContent = 'Kemas Kini Lokasi/Sesi';
+        document.getElementById('btnConf').classList.replace('btn-warning', 'btn-primary');
+        document.getElementById('btnConf').classList.remove('text-dark');
+        document.getElementById('btnCancelConf').classList.remove('d-none');
+        window.scrollTo(0, 0); 
+    }
+
+    function cancelEditConf() {
+        editingConfId = null;
+        document.getElementById('configForm').reset();
+        document.getElementById('btnConf').textContent = 'Simpan Lokasi/Sesi';
+        document.getElementById('btnConf').classList.replace('btn-primary', 'btn-warning');
+        document.getElementById('btnConf').classList.add('text-dark');
+        document.getElementById('btnCancelConf').classList.add('d-none');
+    }
+
+    document.getElementById('configForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const payload = {
+          tenant_id: MAIN_TENANT, // Guna Tenant ID dari memori
+          campus: document.getElementById('confCampus').value,
+          venue: document.getElementById('confVenue').value,
+          exam_session: document.getElementById('confSession').value,
+          start_time: document.getElementById('confTime').value || null
+      };
+
+      const btn = document.getElementById('btnConf');
+      const url = editingConfId ? `/api/admin/config/${editingConfId}` : '/api/admin/config';
+      const method = editingConfId ? 'PUT' : 'POST';
+
+      btn.disabled = true; btn.textContent = 'Menyimpan...'; 
+      fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      .then(res => res.json())
+      .then(data => {
+          cancelEditConf();
+          btn.disabled = false;
+          loadConfigs(); 
+      });
+    });
+
+    function deleteConfig(id) {
+        if(!confirm("Anda pasti mahu memadam lokasi/sesi ini?")) return;
+        fetch(`/api/admin/config/${id}`, { method: 'DELETE' })
+        .then(res => res.json())
+        .then(() => loadConfigs());
+    }
+  </script>
+</body>
+</html>
