@@ -718,38 +718,31 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
     }
 });
 // =====================================================
-// API 14: Log Masuk Admin (Sistem Multi-Tenant)
+// API 14: Log Masuk Admin (Sistem Multi-Tenant Database)
 // =====================================================
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', async (req, res) => {
     const { username, password } = req.body;
-    
-    // Pangkalan Data Sementara untuk Pelanggan Anda
-    const tenants = {
-        'admin_umpsa': { 
-            pass: 'umpsa2026', 
-            tenant_id: 'c2a6693c-48cc-400b-9baf-ca51dcaef337', 
-            name: 'Universiti Malaysia Pahang Al-Sultan Abdullah (UMPSA)' 
-        },
-        'admin_uitm': { 
-            pass: 'uitm2026', 
-            tenant_id: 'tenant-id-untuk-uitm-nanti', 
-            name: 'Universiti Teknologi MARA (UiTM)' 
+    try {
+        // Sistem kini menyemak ID dan Kata Laluan terus dari Supabase!
+        const { data, error } = await supabase
+            .from('tenants')
+            .select('*')
+            .eq('username', username)
+            .eq('password', password)
+            .single();
+
+        if (error || !data) {
+            return res.status(401).json({ success: false, message: 'ID Pengguna atau Kata Laluan salah!' });
         }
-        // Anda boleh tambah beratus universiti di sini kelak!
-    };
 
-    const user = tenants[username];
-
-    if (user && user.pass === password) {
-        // Jika berjaya, hantar token beserta tenant_id rahsia mereka!
         res.status(200).json({ 
             success: true, 
             token: 'kunci-rahsia-exact-2026',
-            tenant_id: user.tenant_id,
-            uni_name: user.name
+            tenant_id: data.id,
+            uni_name: data.tenant_name
         });
-    } else {
-        res.status(401).json({ success: false, message: 'ID Pengguna atau Kata Laluan salah!' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
     }
 });
 // =====================================================
@@ -844,6 +837,24 @@ app.put('/api/admin/config/:id', async (req, res) => {
         
     if (error) return res.status(400).json({ success: false, message: error.message });
     res.status(200).json({ success: true, message: 'Lokasi/Sesi berjaya dikemas kini!' });
+});
+
+// =====================================================
+// API 23: Daftar Universiti Baru (Modul Super-Admin)
+// =====================================================
+app.post('/api/superadmin/tenant', async (req, res) => {
+    const { tenant_name, username, password } = req.body;
+    try {
+        const { data, error } = await supabase
+            .from('tenants')
+            .insert([{ tenant_name, username, password }])
+            .select();
+
+        if (error) throw error;
+        res.status(200).json({ success: true, message: 'Universiti baharu berjaya didaftarkan!', data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // Hidupkan Pelayan
