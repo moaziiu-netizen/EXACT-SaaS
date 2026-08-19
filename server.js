@@ -619,7 +619,7 @@ app.post('/api/reports', async (req, res) => {
 });
 
 // =====================================================
-// API 13: Muat Naik Jadual Tugas (Modul Admin) - VERSI KEBAL + CHUNKING
+// API 13: Muat Naik Jadual Tugas (Modul Admin) - VERSI KEBAL + CHUNKING TEPAT
 // =====================================================
 app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, res) => {
     try {
@@ -633,7 +633,6 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
 
         if (rawData.length === 0) throw new Error("Fail Excel kosong.");
 
-        // Penterjemah Tarikh Excel
         const formatExcelDate = (excelDate) => {
             if (!excelDate) return null;
             if (typeof excelDate === 'number') {
@@ -643,7 +642,6 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
             return String(excelDate);
         };
 
-        // Penterjemah Masa Excel (Super Kebal)
         const formatExcelTime = (excelTime) => {
             if (!excelTime || excelTime === '####') return null;
             if (typeof excelTime === 'number') {
@@ -660,7 +658,6 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
             return null;
         };
 
-        // FUNGSI PENCARI TAJUK
         const getVal = (row, possibleKeys) => {
             const rowKeys = Object.keys(row);
             for (let key of rowKeys) {
@@ -674,22 +671,24 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
             return null;
         };
 
-        // 2. Formatkan data Excel
+        // 2. Formatkan data Excel (DISUSUN MENGIKUT NAMA LAJUR SUPABASE ANDA)
         const formattedData = rawData.map(row => ({
             tenant_id: tenant_id,
-            // Sila pastikan nama di sebelah kiri ini SAMA SEBIJI dengan lajur (columns) di dalam Supabase anda
-            date: formatExcelDate(getVal(row, ['date', 'exam date', 'tarikh'])), 
-            session: getVal(row, ['session', 'sesi', 'exam session']),
+            exam_date: formatExcelDate(getVal(row, ['date', 'exam date', 'tarikh'])), 
+            exam_session: getVal(row, ['session', 'sesi', 'exam session']),
             campus: getVal(row, ['campus', 'kampus']),
             venue: getVal(row, ['venue', 'dewan', 'lokasi']),
             course_code: getVal(row, ['course code', 'subject code', 'kod kursus', 'kod subjek', 'Course']),
-            course_name: getVal(row, ['course name', 'course description', 'Course Description', 'subject name', 'nama kursus']),
+            course_desc: getVal(row, ['course name', 'course description', 'Course Description', 'subject name', 'nama kursus']), // <--- DITUKAR KEPADA course_desc
             start_time: formatExcelTime(getVal(row, ['start time', 'masa mula', 'time start', 'Start Time'])),
             end_time: formatExcelTime(getVal(row, ['end time', 'masa tamat', 'time end', 'Time To'])),
+            start_seat: String(getVal(row, ['start seat', 'mula tempat duduk', 'seat start', 'Seating From']) || ''), // <--- DITAMBAH
+            end_seat: String(getVal(row, ['end seat', 'tamat tempat duduk', 'seat end', 'Seating To']) || ''), // <--- DITAMBAH
+            total_student: String(getVal(row, ['total student', 'jumlah pelajar', 'total students', 'Total Student']) || ''), // <--- DITAMBAH
             staff_id: String(getVal(row, ['staff id', 'id staf', 'id pengawas', 'Staff ID']) || ''),
-            name: getVal(row, ['name', 'staff name', 'nama', 'nama staf', 'nama pengawas', 'Name']),
+            staff_name: getVal(row, ['name', 'staff name', 'nama', 'nama staf', 'nama pengawas', 'Name']), // <--- DITUKAR KEPADA staff_name
             role: getVal(row, ['role', 'peranan', 'jawatan', 'Role']),
-            phone: String(getVal(row, ['phone', 'contact number', 'no tel', 'no telefon', 'Contact Number']) || '')
+            contact_number: String(getVal(row, ['phone', 'contact number', 'no tel', 'no telefon', 'Contact Number']) || '') // <--- DITUKAR KEPADA contact_number
         }));
 
         // 3. Masukkan data ke dalam pangkalan data (Teknik Chunking 500 baris)
@@ -709,6 +708,7 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
         });
 
     } catch (err) {
+        console.error("Ralat Muat Naik:", err.message);
         res.status(500).json({ success: false, message: err.message });
     }
 });
