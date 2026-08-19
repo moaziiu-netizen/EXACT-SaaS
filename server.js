@@ -856,7 +856,42 @@ app.post('/api/superadmin/tenant', async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 });
+// =====================================================
+// API 24: Log Masuk Super-Admin
+// =====================================================
+app.post('/api/superadmin/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    // ID dan Kata Laluan Rahsia untuk Anda (Founder)
+    const SUPER_USER = 'founder';
+    const SUPER_PASS = 'exact2026';
 
+    if (username === SUPER_USER && password === SUPER_PASS) {
+        res.status(200).json({ 
+            success: true, 
+            token: 'kunci-super-exact-2026'
+        });
+    } else {
+        res.status(401).json({ success: false, message: 'ID Pengguna atau Kata Laluan Super-Admin salah!' });
+    }
+});
+// =====================================================
+// API 25: Baca Senarai Universiti (Untuk Super-Admin)
+// =====================================================
+app.get('/api/superadmin/tenants', async (req, res) => {
+    try {
+        // Tarik data ID, Nama Universiti dan Username sahaja dari Supabase
+        const { data, error } = await supabase
+            .from('tenants')
+            .select('id, tenant_name, username')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.status(200).json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 // Hidupkan Pelayan
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

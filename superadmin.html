@@ -3,41 +3,124 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>EXACT - Super Admin</title>
+  <title>EXACT - Super Admin Dashboard</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script>
+    // PENGAWAL KESELAMATAN SUPER-ADMIN
+    if (sessionStorage.getItem('superAdminToken') !== 'kunci-super-exact-2026') {
+        window.location.replace('superadmin-login.html');
+    }
+  </script>
   <style>
-    body { background-color: #f4f6f8; padding-top: 50px; }
-    .card-super { max-width: 600px; margin: 0 auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); background: #fff; border-top: 5px solid #212529; }
+    body { background-color: #f4f6f8; padding: 40px 0; }
+    .card-super { max-width: 900px; margin: 0 auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); background: #fff; border-top: 5px solid #212529; }
   </style>
 </head>
 <body>
 
   <div class="container">
     <div class="card-super">
-      <h3 class="text-center fw-bold mb-1">EXACT Super-Admin</h3>
-      <p class="text-center text-muted mb-4 small">Pendaftaran Pelanggan (Tenant) Baharu</p>
+      
+      <!-- HEADER NAVIGASI -->
+      <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div>
+            <h3 class="m-0 fw-bold">EXACT Super-Admin</h3>
+            <small class="text-muted">Pusat Kawalan Utama</small>
+        </div>
+        <div>
+            <!-- Pautan Pantas ke Portal Pengguna (Live) -->
+            <a href="index.html" target="_blank" class="btn btn-outline-dark btn-sm fw-bold me-2">📺 Skrin EXACT (Live)</a>
+            <button class="btn btn-danger btn-sm fw-bold" onclick="logoutSuper()">Log Keluar</button>
+        </div>
+      </div>
 
-      <form id="tenantForm">
-        <div class="mb-3">
-          <label class="form-label fw-bold">Nama Penuh Universiti / Institusi</label>
-          <input type="text" id="tName" class="form-control" placeholder="Contoh: Universiti Teknologi MARA (UiTM)" required>
+      <!-- BORANG PENDAFTARAN -->
+      <h6 class="fw-bold text-primary mb-3">+ Daftar Pelanggan (Tenant) Baharu</h6>
+      <form id="tenantForm" class="p-3 bg-light border rounded mb-5">
+        <div class="row">
+            <div class="col-md-12 mb-3">
+                <label class="form-label fw-bold small">Nama Penuh Universiti / Institusi</label>
+                <input type="text" id="tName" class="form-control form-control-sm" placeholder="Contoh: Universiti Teknologi MARA (UiTM)" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold small">ID Log Masuk Admin</label>
+                <input type="text" id="tUser" class="form-control form-control-sm" placeholder="Contoh: admin_uitm" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label fw-bold small">Kata Laluan</label>
+                <input type="text" id="tPass" class="form-control form-control-sm" placeholder="Contoh: uitm2026" required>
+            </div>
         </div>
-        <div class="mb-3">
-          <label class="form-label fw-bold">ID Log Masuk Admin</label>
-          <input type="text" id="tUser" class="form-control" placeholder="Contoh: admin_uitm" required>
-        </div>
-        <div class="mb-4">
-          <label class="form-label fw-bold">Kata Laluan</label>
-          <input type="text" id="tPass" class="form-control" placeholder="Contoh: uitm2026" required>
-        </div>
-        <button type="submit" class="btn btn-dark w-100 fw-bold" id="btnDaftar">Daftar Pelanggan</button>
+        <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold" id="btnDaftar">Daftar Pelanggan</button>
+        <div id="resultMsg" class="mt-2 text-center fw-bold small"></div>
       </form>
       
-      <div id="resultMsg" class="mt-3 text-center fw-bold"></div>
+      <!-- JADUAL SENARAI UNIVERSITI -->
+      <h5 class="fw-bold mb-3 text-center">Senarai Universiti Berdaftar</h5>
+      <div class="table-responsive">
+          <table class="table table-bordered table-hover align-middle text-center small">
+              <thead class="table-dark">
+                  <tr>
+                      <th>Nama Universiti</th>
+                      <th>ID Log Masuk</th>
+                      <th>Tindakan (Bypass)</th>
+                  </tr>
+              </thead>
+              <tbody id="tenantTableBody">
+                  <tr><td colspan="3" class="text-muted">Memuatkan data...</td></tr>
+              </tbody>
+          </table>
+      </div>
+
     </div>
   </div>
 
   <script>
+    // 1. Fungsi Log Keluar Super Admin
+    function logoutSuper() {
+        sessionStorage.removeItem('superAdminToken');
+        window.location.replace('superadmin-login.html');
+    }
+
+    // 2. Fungsi Muat Senarai Universiti
+    function loadTenants() {
+        fetch('/api/superadmin/tenants')
+        .then(res => res.json())
+        .then(res => {
+            const tbody = document.getElementById('tenantTableBody');
+            if(!res.success || res.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Tiada universiti direkodkan.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = res.data.map(t => `
+                <tr>
+                    <td class="text-start fw-bold text-primary">${t.tenant_name}</td>
+                    <td><code>${t.username}</code></td>
+                    <td>
+                        <button class="btn btn-sm btn-warning fw-bold text-dark w-100" onclick="impersonate('${t.id}', '${t.tenant_name.replace(/'/g, "\\'")}')">
+                            🔑 Log Masuk Sebagai Admin
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        });
+    }
+
+    // Panggil fungsi muat data apabila halaman dibuka
+    window.addEventListener('load', loadTenants);
+
+    // 3. Fungsi Ajaib: Memintas (Bypass) Log Masuk Admin
+    function impersonate(tenantId, uniName) {
+        // Kita cipta "Kunci Palsu" di memori pelayar supaya admin.html ingat kita dah log masuk
+        sessionStorage.setItem('adminToken', 'kunci-rahsia-exact-2026');
+        sessionStorage.setItem('tenantId', tenantId);
+        sessionStorage.setItem('uniName', uniName);
+        
+        // Buka portal admin di tab baharu
+        window.open('admin.html', '_blank');
+    }
+
+    // 4. Fungsi Daftar Universiti
     document.getElementById('tenantForm').addEventListener('submit', function(e) {
       e.preventDefault();
       const btn = document.getElementById('btnDaftar');
@@ -62,6 +145,7 @@
           if(data.success) {
               msg.innerHTML = `<span class="text-success">${data.message}</span>`;
               document.getElementById('tenantForm').reset();
+              loadTenants(); // <--- Refresh jadual automatik lepas daftar!
           } else {
               msg.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`;
           }
