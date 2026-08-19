@@ -29,8 +29,9 @@
       color: #fff;
       display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center;
     }
-    .brand-title { display:flex; align-items:center; gap:12px; cursor: pointer; }
+    .brand-title { display:flex; flex-direction:column; gap:2px; cursor: pointer; }
     .brand-title h3 { margin:0; font-weight:700; letter-spacing:.2px; }
+    .brand-title small { font-weight: 500; opacity: 0.9; }
 
     .nav-btn { min-width: 100px; font-weight: 600; border:2px solid var(--brand-yellow) !important; flex-grow: 1;}
     #navHome     { background:#ffffff; color: var(--brand-navy); }
@@ -76,6 +77,7 @@
     <div class="brand-bar mb-3">
       <div class="brand-title" onclick="route('home')" title="Go to Home">
         <h3 class="m-0">EXACT - Examination Attendance and Checkout Tracker</h3>
+        <small id="headerUniName">Examination Attendance and Checkout Tracker</small>
       </div>
       <div class="btn-group flex-wrap">
         <button id="navHome" class="btn nav-btn" onclick="route('home')">Home</button>
@@ -419,6 +421,33 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 
   <script>
+    // ==========================================
+    // 1. PENGEKAM MULTI-TENANT & KESELAMATAN URL
+    // ==========================================
+    const urlParams = new URLSearchParams(window.location.search);
+    const TENANT_ID = urlParams.get('tenant');
+    const UNI_NAME = urlParams.get('uni');
+
+    if (!TENANT_ID) {
+        document.body.innerHTML = `
+          <div style="text-align: center; margin-top: 100px; font-family: sans-serif; padding: 20px;">
+            <h2 style="color: #dc3545; font-weight: bold;">⛔ Akses Ditolak</h2>
+            <p style="color:#6c757d;">Sila imbas Kod QR rasmi atau gunakan pautan yang sah dari pihak Pengurusan Peperiksaan Universiti anda.</p>
+          </div>
+        `;
+        throw new Error("Sistem dihentikan: Tiada Tenant ID pada pautan URL.");
+    }
+
+    window.addEventListener('load', () => {
+        const uniLabel = document.getElementById('headerUniName');
+        if(uniLabel && UNI_NAME) {
+            uniLabel.innerText = UNI_NAME;
+        }
+    });
+
+    // ==========================================
+    // 2. FUNGSI SOKONGAN & UTILITI
+    // ==========================================
     function toIsoFromDisplay(ddmmyyyy){
       if(!ddmmyyyy) return '';
       const [d,m,y] = ddmmyyyy.split('/').map(s=>parseInt(s,10));
@@ -430,11 +459,11 @@
       if(!value) return '';
       let d;
       if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-         d = new Date(value.substring(0,10) + 'T00:00:00'); // Kunci bacaan 10 aksara terawal sahaja
+         d = new Date(value.substring(0,10) + 'T00:00:00'); 
       } else {
          d = new Date(value);
       }
-      if (isNaN(d.getTime())) return value; // Jika ralat, tunjuk raw string, bukan NaN
+      if (isNaN(d.getTime())) return value; 
       const dd = String(d.getDate()).padStart(2,'0');
       const mm = String(d.getMonth()+1).padStart(2,'0');
       const yy = d.getFullYear();
@@ -483,9 +512,7 @@
 
     // ---------------- HOME ----------------
     function loadFiltersAndSchedule(){
-        const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
-
-        fetch(`/api/schedule-filters/${tenantId}`)
+        fetch(`/api/schedule-filters/${TENANT_ID}`)
             .then(res => res.json())
             .then(f => {
                 if(!f.success) return;
@@ -515,9 +542,8 @@
     }
 
     function loadMasterSchedule(){
-        // Kumpul semua input dari kotak carian
         const filters = {
-            tenant_id: "c2a6693c-48cc-400b-9baf-ca51dcaef337",
+            tenant_id: TENANT_ID,
             date: toIsoFromDisplay(document.getElementById('fDate').value || ''),
             campus: document.getElementById('fCampus').value || '',
             venue: document.getElementById('fVenue').value || '',
@@ -530,7 +556,6 @@
         head.innerHTML = '';
         body.innerHTML = '<tr><td class="text-muted text-center py-4">Loading…</td></tr>';
 
-        // Panggil API Master Schedule
         fetch('/api/master-schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -562,13 +587,11 @@
 
             const todayIso = getLocalTodayIso(); 
 
-            // Lukis jadual baris demi baris
             body.innerHTML = res.rows.map(row=>{
                 const cells = row.slice(0, 8); 
                 if (iDate >= 0 && cells[iDate]) cells[iDate] = toDisplayFromIso(cells[iDate]);
 
                 const rowDateIso = (iDate >= 0) ? row[iDate] : '';
-                // Jadikan nama boleh diklik hanya untuk tarikh HARI INI
                 const canClick = (rowDateIso === todayIso);
 
                 if (iName >= 0 && cells[iName]) {
@@ -603,9 +626,8 @@
     function initReports() {
       if (reportsInitialized) return;
       reportsInitialized = true;
-      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
 
-      fetch(`/api/config/${tenantId}`)
+      fetch(`/api/config/${TENANT_ID}`)
         .then(res => res.json())
         .then(data => {
             semestersAll = data.semesters || [];
@@ -643,7 +665,6 @@
        
        if(!start || !end) { showResult('Info', 'Please select a valid date range or semester.'); return; }
        
-       const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
        const btn = document.getElementById('btnGenerateRep');
        btn.textContent = 'Generating...'; btn.disabled = true;
        document.getElementById('reportDashboard').classList.add('d-none');
@@ -651,7 +672,7 @@
        fetch('/api/reports', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ tenant_id: tenantId, startDate: start, endDate: end })
+           body: JSON.stringify({ tenant_id: TENANT_ID, startDate: start, endDate: end })
        })
        .then(res => res.json())
        .then(res => {
@@ -799,10 +820,7 @@
       }
       checkinInitialized = true;
 
-      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
-
-      // GANTIKAN google.script.run DENGAN FETCH API Node.js
-      fetch(`/api/config/${tenantId}`)
+      fetch(`/api/config/${TENANT_ID}`)
         .then(res => res.json())
         .then(data => {
             if(data.success) {
@@ -829,7 +847,7 @@
         const btn = document.getElementById('btnSearchId');
         btn.textContent = '...'; btn.disabled = true;
 
-        fetch(`/api/staff-today/${tenantId}/${id}`)
+        fetch(`/api/staff-today/${TENANT_ID}/${id}`)
             .then(response => response.json())
             .then(result => {
                 btn.textContent = 'Search'; btn.disabled = false;
@@ -912,7 +930,7 @@
 
     function onCheckin(){
       const form = {
-        tenant_id: "c2a6693c-48cc-400b-9baf-ca51dcaef337", 
+        tenant_id: TENANT_ID, 
         name: document.getElementById('name').value.trim(), 
         staffId: document.getElementById('staffId').value.trim(),
         role: document.getElementById('role').value.trim(), 
@@ -978,10 +996,7 @@
       if (checkoutInitialized) return;
       checkoutInitialized = true;
 
-      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
-
-      // 1. Tarik senarai Kampus
-      fetch(`/api/config/${tenantId}`)
+      fetch(`/api/config/${TENANT_ID}`)
         .then(res => res.json())
         .then(data => {
             if(data.success) {
@@ -1095,10 +1110,9 @@
     }
 
     function autoLoadCoursesForChief(staffId) {
-       const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
        document.getElementById('courseRows').innerHTML = '<div class="text-muted mb-2">Auto-loading assigned courses...</div>';
        
-       fetch(`/api/staff-today/${tenantId}/${staffId}`)
+       fetch(`/api/staff-today/${TENANT_ID}/${staffId}`)
             .then(res => res.json())
             .then(res => {
                 document.getElementById('courseRows').innerHTML = '';
@@ -1120,7 +1134,6 @@
     }
 
     function loadAttendees(){
-      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
       const campus = document.getElementById('coCampus').value;
       const venue  = document.getElementById('coVenue').value;
       const session= document.getElementById('coSession').value;
@@ -1134,7 +1147,7 @@
       }
       body.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-2">Loading…</td></tr>';
 
-      fetch(`/api/attendees/${tenantId}/${campus}/${venue}/${session}`)
+      fetch(`/api/attendees/${TENANT_ID}/${campus}/${venue}/${session}`)
         .then(res => res.json())
         .then(res => {
             if(!res.success || !res.attendees || res.attendees.length === 0){
@@ -1160,7 +1173,6 @@
     }
 
     function loadCoursesForSession(){
-      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
       const campus = document.getElementById('coCampus').value;
       const venue  = document.getElementById('coVenue').value;
       const session= document.getElementById('coSession').value;
@@ -1168,7 +1180,7 @@
 
       if (!campus || !venue || !session) return;
 
-      fetch(`/api/session-courses/${tenantId}/${campus}/${venue}/${session}`)
+      fetch(`/api/session-courses/${TENANT_ID}/${campus}/${venue}/${session}`)
         .then(res => res.json())
         .then(res => {
             if (res.success) {
@@ -1234,7 +1246,6 @@
     }
 
     function submitCheckout(){
-      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337"; 
       const campus = document.getElementById('coCampus').value;
       const venue  = document.getElementById('coVenue').value;
       const session= document.getElementById('coSession').value;
@@ -1253,7 +1264,7 @@
         courseItems = codes.map(code => ({ code, desc: map.get(code) || '' }));
       }
 
-      const payload = { tenant_id: tenantId, campus, venue, session, staffIds, returnScript, courseItems };
+      const payload = { tenant_id: TENANT_ID, campus, venue, session, staffIds, returnScript, courseItems };
       const btns = document.querySelectorAll('#screen-checkout button, #screen-checkout select');
       btns.forEach(b=> b.disabled = true);
 
@@ -1327,9 +1338,7 @@
       if (collectionInitialized) return;
       collectionInitialized = true;
       
-      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
-
-      fetch(`/api/config/${tenantId}`)
+      fetch(`/api/config/${TENANT_ID}`)
         .then(res => res.json())
         .then(data => {
             if(data.success) {
@@ -1359,7 +1368,6 @@
     }
 
     function searchGlobalCourse() {
-      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
       const query = document.getElementById('colCourseSearch').value.trim();
       const btn = document.querySelector('button[onclick="searchGlobalCourse()"]');
       const selBox = document.getElementById('colCourseSelect');
@@ -1372,7 +1380,7 @@
       selBox.classList.add('d-none');
       btn.disabled = true; btn.textContent = '...';
 
-      fetch(`/api/search-course/${tenantId}?q=${encodeURIComponent(query)}`)
+      fetch(`/api/search-course/${TENANT_ID}?q=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(res => {
             btn.disabled = false; btn.textContent = 'Search';
@@ -1421,7 +1429,6 @@
     }
 
     function searchGlobalStaff(idInputId, nameInputId) {
-      const tenantId = "c2a6693c-48cc-400b-9baf-ca51dcaef337";
       const id = document.getElementById(idInputId).value.trim();
       const btn = document.querySelector(`button[onclick="searchGlobalStaff('${idInputId}', '${nameInputId}')"]`);
       if (!id) { showResult('Info', 'Please enter an ID to search.'); return; }
@@ -1429,7 +1436,7 @@
       document.getElementById(nameInputId).value = 'Searching...';
       btn.disabled = true; btn.textContent = '...';
 
-      fetch(`/api/search-staff/${tenantId}/${id}`)
+      fetch(`/api/search-staff/${TENANT_ID}/${id}`)
         .then(res => {
             if (res.status === 404) return null;
             return res.json();
@@ -1459,7 +1466,7 @@
       const codeToSubmit = document.getElementById('colCourseCode').value.trim() || document.getElementById('colCourseSearch').value.trim();
 
       const form = {
-        tenant_id: "c2a6693c-48cc-400b-9baf-ca51dcaef337",
+        tenant_id: TENANT_ID,
         campus: document.getElementById('colCampus').value,
         venue: document.getElementById('colVenue').value,
         courseCode: codeToSubmit,

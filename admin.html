@@ -15,7 +15,7 @@
     body { background-color: #f4f6f8; padding-bottom: 50px; }
     .admin-header { background-color: #004A98; color: white; padding: 20px 0; margin-bottom: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
     
-    /* KEMAS KINI SAIZ KELEBARAN SKRIN */
+    /* SAIZ KELEBARAN SKRIN MAKSIMA */
     .container { max-width: 95% !important; }
     .admin-card { max-width: 100%; margin: 0 auto; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 10px; background: #fff; }
     
@@ -33,7 +33,7 @@
             <h3 class="m-0 fw-bold header-title">EXACT Admin Portal</h3>
         </div>
         <div>
-            <a href="index.html" target="_blank" class="btn btn-info btn-sm fw-bold text-dark me-2">📺 Skrin EXACT (Live)</a>
+            <a href="#" id="btnLiveScreen" target="_blank" class="btn btn-info btn-sm fw-bold text-dark me-2">📺 Skrin EXACT (Live)</a>
             <button class="btn btn-danger btn-sm fw-bold" onclick="logout()">Log Keluar</button>
         </div>
     </div>
@@ -55,6 +55,9 @@
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="schedule-tab" data-bs-toggle="tab" data-bs-target="#schedule" type="button" role="tab" onclick="loadSchedules()">4. Urus Jadual</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="qr-tab" data-bs-toggle="tab" data-bs-target="#qrcode" type="button" role="tab" onclick="generateQR()">5. Kod QR (Pautan Pengawas)</button>
         </li>
       </ul>
 
@@ -177,6 +180,30 @@
             </div>
         </div>
 
+        <!-- TAB 5: JANAAN KOD QR -->
+        <div class="tab-pane fade" id="qrcode" role="tabpanel">
+            <div class="text-center mt-4">
+                <h4 style="color: #004A98; font-weight: bold;">Pautan Akses Pengawas Peperiksaan</h4>
+                <p class="text-muted">Ini adalah pautan unik khusus untuk Universiti anda. Sila sebarkan pautan ini atau cetak Kod QR di bawah untuk ditampal di dewan peperiksaan.</p>
+                
+                <div class="card p-4 mx-auto mb-4" style="max-width: 500px; border: 2px dashed #004A98; background-color: #f8f9fa;">
+                    <!-- Tempat QR Code akan dilukis -->
+                    <div id="qrCanvas" class="d-flex justify-content-center mb-3"></div>
+                    
+                    <label class="form-label fw-bold small text-start">Pautan URL (Sedia untuk disalin):</label>
+                    <div class="input-group">
+                        <input type="text" id="liveUrlLink" class="form-control" readonly>
+                        <button class="btn btn-outline-primary" type="button" onclick="copyLiveLink()">Salin Pautan</button>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-center gap-2">
+                    <button class="btn btn-success fw-bold" onclick="downloadQR()">📥 Muat Turun Kod QR</button>
+                    <a href="#" id="btnTestLive" target="_blank" class="btn btn-info fw-bold">📺 Uji Skrin Pengguna</a>
+                </div>
+            </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -205,7 +232,6 @@
                   </div>
                   <div class="col-6 mb-2">
                       <label class="form-label fw-bold small">Peranan</label>
-                      <!-- Dropdown akan diisi secara dinamik -->
                       <select class="form-select form-select-sm" id="editSchedRole"></select>
                   </div>
               </div>
@@ -217,7 +243,6 @@
                   </div>
                   <div class="col-6 mb-2">
                       <label class="form-label fw-bold small">Sesi</label>
-                      <!-- Dropdown akan diisi secara dinamik -->
                       <select class="form-select form-select-sm" id="editSchedSession"></select>
                   </div>
               </div>
@@ -236,6 +261,9 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Pustaka Janaan Kod QR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
   <script>
     const MAIN_TENANT = sessionStorage.getItem('tenantId');
     let editingSemId = null;
@@ -253,6 +281,12 @@
             document.querySelector('.header-title').innerHTML = `EXACT Admin Portal <br><span style="font-size:0.9rem; font-weight:normal;">${uniName}</span>`;
         }
         editScheduleModal = new bootstrap.Modal(document.getElementById('editScheduleModal'));
+        
+        // Pautkan butang skrin EXACT ke tenant
+        const liveBtn = document.getElementById('btnLiveScreen');
+        if(MAIN_TENANT) {
+            liveBtn.href = `index.html?tenant=${MAIN_TENANT}&uni=${encodeURIComponent(uniName)}`;
+        }
     });
 
     function logout() {
@@ -301,7 +335,7 @@
         if(data.success) {
             resultDiv.innerHTML = `<span class="text-success">${data.message}</span>`;
             document.getElementById('uploadForm').reset();
-            loadSchedules(); // Segar semula jadual secara automatik
+            loadSchedules(); 
         } else {
             resultDiv.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`;
         }
@@ -422,7 +456,7 @@
         fetch(`/api/admin/config/${id}`, { method: 'DELETE' }).then(res => res.json()).then(() => loadConfigs());
     }
 
-    // --- TAB 4: URUS JADUAL PETUGAS DENGAN AUTO-DROPDOWN & AUTO-FILL ---
+    // --- TAB 4: URUS JADUAL PETUGAS ---
     function loadSchedules() {
         const tbody = document.getElementById('scheduleTableBody');
         tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Memuatkan dari pelayan...</td></tr>';
@@ -435,19 +469,15 @@
                 return;
             }
 
-            // Kosongkan Set dan Kamus untuk data baru
             uniqueRoles.clear();
             uniqueSessions.clear();
             staffDirectory = {};
-
             let tableHTML = '';
 
             res.data.forEach(s => {
-                // Kumpul Data untuk Dropdown Pintar
                 if(s.role) uniqueRoles.add(s.role.trim());
                 if(s.exam_session) uniqueSessions.add(s.exam_session.trim());
 
-                // Bina Buku Alamat Staf (Kumpul Nama dan Telefon berdasarkan ID)
                 if(s.staff_id && s.staff_name) {
                     if(!staffDirectory[s.staff_id]) {
                         staffDirectory[s.staff_id] = { name: s.staff_name, phone: s.contact_number || '' };
@@ -456,7 +486,6 @@
                     }
                 }
 
-                // Bina Baris Jadual
                 tableHTML += `
                 <tr>
                     <td>${s.exam_date || '-'}</td>
@@ -473,18 +502,14 @@
             });
 
             tbody.innerHTML = tableHTML;
-            
-            // Populasikan Dropdown
             populateDropdown('editSchedRole', uniqueRoles);
             populateDropdown('editSchedSession', uniqueSessions);
-
         })
         .catch(err => {
             tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Gagal memuat turun data.</td></tr>';
         });
     }
 
-    // Fungsi Pembina Dropdown HTML dari Data Set
     function populateDropdown(selectId, dataSet) {
         const select = document.getElementById(selectId);
         select.innerHTML = ''; 
@@ -499,7 +524,6 @@
         });
     }
 
-    // Fungsi Membuka Modal (Pop-up)
     function triggerEditSchedule(id, staffId, name, role, phone, venue, session) {
         document.getElementById('editSchedId').value = id;
         document.getElementById('editSchedStaffId').value = staffId;
@@ -510,7 +534,6 @@
         const roleSelect = document.getElementById('editSchedRole');
         const sessionSelect = document.getElementById('editSchedSession');
         
-        // Pilihan Pintar: Tambah Sementara jika tiada dalam senarai asal Excel
         if (!Array.from(roleSelect.options).some(opt => opt.value === role)) {
             roleSelect.add(new Option(role, role));
         }
@@ -525,7 +548,6 @@
         editScheduleModal.show();
     }
 
-    // Fungsi Auto-Fill Apabila Menaip ID Staf
     document.getElementById('editSchedStaffId').addEventListener('keyup', function() {
         const typedId = this.value.trim();
         if(staffDirectory[typedId]) {
@@ -534,7 +556,6 @@
         }
     });
 
-    // Fungsi Simpan (Hantar Ke Pelayan)
     document.getElementById('editScheduleForm').addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -573,6 +594,56 @@
             resultMsg.innerHTML = `<span class="text-danger">Gagal menghubungi pelayan.</span>`;
         });
     });
+
+    // --- TAB 5: PENJANAAN KOD QR ---
+    let qrGenerated = false;
+
+    function generateQR() {
+        if(qrGenerated) return; 
+        
+        const uniName = sessionStorage.getItem('uniName') || 'Universiti';
+        const liveLink = `https://exact-umpsa.onrender.com/index.html?tenant=${MAIN_TENANT}&uni=${encodeURIComponent(uniName)}`;
+        
+        document.getElementById('liveUrlLink').value = liveLink;
+        document.getElementById('btnTestLive').href = liveLink;
+
+        const qrContainer = document.getElementById('qrCanvas');
+        qrContainer.innerHTML = ''; 
+        
+        new QRCode(qrContainer, {
+            text: liveLink,
+            width: 250,
+            height: 250,
+            colorDark : "#004A98",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H 
+        });
+        
+        qrGenerated = true;
+    }
+
+    function copyLiveLink() {
+        const copyText = document.getElementById('liveUrlLink');
+        copyText.select();
+        copyText.setSelectionRange(0, 99999); 
+        navigator.clipboard.writeText(copyText.value);
+        alert("Pautan berjaya disalin!");
+    }
+
+    function downloadQR() {
+        const qrCanvas = document.querySelector('#qrCanvas canvas');
+        if(!qrCanvas) {
+            alert("Sila tunggu Kod QR dijana terlebih dahulu.");
+            return;
+        }
+        
+        const imageUri = qrCanvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+        
+        const link = document.createElement('a');
+        link.download = 'EXACT_QR_Code.png';
+        link.href = imageUri;
+        link.click();
+    }
   </script>
 </body>
 </html>
