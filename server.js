@@ -619,7 +619,7 @@ app.post('/api/reports', async (req, res) => {
 });
 
 // =====================================================
-// API 13: Muat Naik Jadual Tugas (Modul Admin) - VERSI KEBAL
+// API 13: Muat Naik Jadual Tugas (Modul Admin) - VERSI KEBAL + CHUNKING
 // =====================================================
 app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, res) => {
     try {
@@ -630,6 +630,8 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0]; 
         const rawData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName], { defval: null });
+
+        if (rawData.length === 0) throw new Error("Fail Excel kosong.");
 
         // Penterjemah Tarikh Excel
         const formatExcelDate = (excelDate) => {
@@ -643,10 +645,7 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
 
         // Penterjemah Masa Excel (Super Kebal)
         const formatExcelTime = (excelTime) => {
-            // 1. Tapis data kosong atau simbol pagar Excel
             if (!excelTime || excelTime === '####') return null;
-            
-            // 2. Jika masa dalam bentuk nombor perpuluhan Excel
             if (typeof excelTime === 'number') {
                 let totalSeconds = Math.round(excelTime * 86400);
                 let hours = Math.floor(totalSeconds / 3600);
@@ -654,22 +653,18 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
                 let seconds = totalSeconds % 60;
                 return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             }
-            
-            // 3. Jika masa dalam bentuk teks, pastikan ia ada rupa masa (cth: "09:00")
             const strTime = String(excelTime).trim();
             if (/^\d{1,2}:\d{2}/.test(strTime)) {
                 return strTime;
             }
-            
-            // Jika data merepek lain, jadikan NULL sahaja
             return null;
         };
 
-        // FUNGSI PENCARI TAJUK (Abaikan huruf besar/kecil & space berlebihan)
+        // FUNGSI PENCARI TAJUK
         const getVal = (row, possibleKeys) => {
             const rowKeys = Object.keys(row);
             for (let key of rowKeys) {
-                const cleanKey = key.trim().toLowerCase().replace(/\s+/g, ' '); // Bersihkan nama lajur Excel
+                const cleanKey = key.trim().toLowerCase().replace(/\s+/g, ' '); 
                 for (let pKey of possibleKeys) {
                     if (cleanKey === pKey.toLowerCase()) {
                         return row[key] !== null ? row[key] : null;
@@ -682,35 +677,35 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
         // 2. Formatkan data Excel
         const formattedData = rawData.map(row => ({
             tenant_id: tenant_id,
-            exam_date: formatExcelDate(getVal(row, ['date', 'exam date', 'tarikh'])), 
-            exam_session: getVal(row, ['session', 'sesi', 'exam session']),
+            // Sila pastikan nama di sebelah kiri ini SAMA SEBIJI dengan lajur (columns) di dalam Supabase anda
+            date: formatExcelDate(getVal(row, ['date', 'exam date', 'tarikh'])), 
+            session: getVal(row, ['session', 'sesi', 'exam session']),
             campus: getVal(row, ['campus', 'kampus']),
             venue: getVal(row, ['venue', 'dewan', 'lokasi']),
-            
-            // Senaraikan pelbagai kemungkinan ejaan tajuk lajur
             course_code: getVal(row, ['course code', 'subject code', 'kod kursus', 'kod subjek', 'Course']),
-            course_desc: getVal(row, ['course name', 'course description', 'Course Description', 'subject name', 'nama kursus']),
-            
+            course_name: getVal(row, ['course name', 'course description', 'Course Description', 'subject name', 'nama kursus']),
             start_time: formatExcelTime(getVal(row, ['start time', 'masa mula', 'time start', 'Start Time'])),
             end_time: formatExcelTime(getVal(row, ['end time', 'masa tamat', 'time end', 'Time To'])),
-            start_seat: String(getVal(row, ['start seat', 'mula tempat duduk', 'seat start', 'Seating From']) || ''),
-            end_seat: String(getVal(row, ['end seat', 'tamat tempat duduk', 'seat end', 'Seating To']) || ''),
-            total_student: String(getVal(row, ['total student', 'jumlah pelajar', 'total students', 'Total Student']) || ''),
-
             staff_id: String(getVal(row, ['staff id', 'id staf', 'id pengawas', 'Staff ID']) || ''),
-            staff_name: getVal(row, ['name', 'staff name', 'nama', 'nama staf', 'nama pengawas', 'Name']),
+            name: getVal(row, ['name', 'staff name', 'nama', 'nama staf', 'nama pengawas', 'Name']),
             role: getVal(row, ['role', 'peranan', 'jawatan', 'Role']),
-            contact_number: String(getVal(row, ['phone', 'contact number', 'no tel', 'no telefon', 'Contact Number']) || '')
+            phone: String(getVal(row, ['phone', 'contact number', 'no tel', 'no telefon', 'Contact Number']) || '')
         }));
 
-        // 3. Masukkan data ke dalam pangkalan data
-        const { error } = await supabase.from('duty_schedule').insert(formattedData);
-
-        if (error) throw error;
+        // 3. Masukkan data ke dalam pangkalan data (Teknik Chunking 500 baris)
+        const chunkSize = 500;
+        for (let i = 0; i < formattedData.length; i += chunkSize) {
+            const chunk = formattedData.slice(i, i + chunkSize);
+            const { error } = await supabase.from('duty_schedule').insert(chunk);
+            if (error) {
+                console.error("Ralat Chunking Supabase:", error);
+                throw new Error("Gagal menyimpan sebahagian data ke Supabase.");
+            }
+        }
         
         res.status(200).json({ 
             success: true, 
-            message: `${formattedData.length} baris rekod jadual berjaya dimuat naik untuk Tenant ID: ${tenant_id}!` 
+            message: `${formattedData.length} baris rekod jadual berjaya dimuat naik secara berperingkat!` 
         });
 
     } catch (err) {
@@ -888,6 +883,56 @@ app.get('/api/superadmin/tenants', async (req, res) => {
 
         if (error) throw error;
         res.status(200).json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// =====================================================
+// API 26: Baca Semua Jadual (Untuk Tab 4: Urus Jadual)
+// =====================================================
+app.get('/api/admin/schedules/:tenantId', async (req, res) => {
+    try {
+        const { tenantId } = req.params;
+        const { data, error } = await supabase
+            .from('duty_schedule')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .order('exam_date', { ascending: false }) // <--- Tukar dari date ke exam_date
+            .limit(10000); 
+
+        if (error) throw error;
+        res.status(200).json({ success: true, data });
+    } catch (err) {
+        console.log("Ralat Tarik Data Supabase:", err.message);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// =====================================================
+// API 27: Kemas Kini Jadual Spesifik (Ad-Hoc)
+// =====================================================
+app.put('/api/admin/schedule/:id', async (req, res) => {
+    try {
+        const scheduleId = req.params.id;
+        // Gunakan nama lajur yang betul!
+        const { staff_id, staff_name, role, contact_number, venue, exam_session } = req.body;
+
+        const { data, error } = await supabase
+            .from('duty_schedule')
+            .update({ 
+                staff_id: staff_id, 
+                staff_name: staff_name, 
+                role: role, 
+                contact_number: contact_number,
+                venue: venue,
+                exam_session: exam_session
+            })
+            .eq('id', scheduleId)
+            .select();
+
+        if (error) throw error;
+        res.status(200).json({ success: true, message: 'Jadual petugas berjaya dikemas kini.', data });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

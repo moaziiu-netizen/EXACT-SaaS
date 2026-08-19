@@ -14,7 +14,11 @@
   <style>
     body { background-color: #f4f6f8; padding-bottom: 50px; }
     .admin-header { background-color: #004A98; color: white; padding: 20px 0; margin-bottom: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .admin-card { max-width: 900px; margin: 0 auto; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 10px; background: #fff; }
+    
+    /* KEMAS KINI SAIZ KELEBARAN SKRIN */
+    .container { max-width: 95% !important; }
+    .admin-card { max-width: 100%; margin: 0 auto; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 10px; background: #fff; }
+    
     .nav-tabs .nav-link.active { font-weight: bold; color: #004A98; border-bottom: 3px solid #004A98; }
     .nav-tabs .nav-link { color: #6c757d; border: none; }
     .table th { background-color: #f8f9fa; color: #004A98; }
@@ -48,6 +52,9 @@
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config" type="button" role="tab" onclick="loadConfigs()">3. Urus Lokasi & Sesi</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="schedule-tab" data-bs-toggle="tab" data-bs-target="#schedule" type="button" role="tab" onclick="loadSchedules()">4. Urus Jadual</button>
         </li>
       </ul>
 
@@ -93,12 +100,10 @@
             <div id="semResult" class="mt-2 mb-4 text-center fw-bold"></div>
             
             <hr>
-            <!-- BAHAGIAN CARIAN SEMESTER (BARU) -->
             <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
                 <h5 class="fw-bold m-0" style="color: #004A98;">Senarai Semester Berdaftar</h5>
                 <input type="text" id="searchSem" class="form-control form-control-sm w-auto" placeholder="🔍 Cari Semester..." onkeyup="filterTable('searchSem', 'semTableBody')">
             </div>
-
             <div class="table-responsive">
               <table class="table table-sm table-bordered align-middle mt-2">
                 <thead><tr><th>Nama Semester</th><th>Tarikh Mula</th><th>Tarikh Tamat</th><th class="text-center" style="width: 180px;">Tindakan</th></tr></thead>
@@ -139,12 +144,10 @@
             <div id="confResult" class="mt-2 mb-4 text-center fw-bold"></div>
 
             <hr>
-            <!-- BAHAGIAN CARIAN LOKASI/SESI (BARU) -->
             <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
                 <h5 class="fw-bold m-0" style="color: #004A98;">Senarai Lokasi & Sesi Berdaftar</h5>
                 <input type="text" id="searchConf" class="form-control form-control-sm w-auto" placeholder="🔍 Cari Lokasi/Sesi..." onkeyup="filterTable('searchConf', 'confTableBody')">
             </div>
-
             <div class="table-responsive">
               <table class="table table-sm table-bordered align-middle mt-2">
                 <thead><tr><th>Kampus</th><th>Dewan (Venue)</th><th>Sesi</th><th>Waktu Mula</th><th class="text-center" style="width: 180px;">Tindakan</th></tr></thead>
@@ -153,6 +156,81 @@
             </div>
         </div>
 
+        <!-- TAB 4: URUS JADUAL PETUGAS -->
+        <div class="tab-pane fade" id="schedule" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
+                <h5 class="fw-bold m-0" style="color: #004A98;">Pangkalan Data Jadual Petugas</h5>
+                <input type="text" id="searchSchedule" class="form-control form-control-sm" style="width: 250px;" placeholder="🔍 Cari Nama / ID / Dewan..." onkeyup="filterTable('searchSchedule', 'scheduleTableBody')">
+            </div>
+
+            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+              <table class="table table-sm table-bordered align-middle mt-2">
+                <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+                    <tr>
+                        <th>Tarikh</th><th>Sesi</th><th>Dewan (Venue)</th><th>ID Staf</th><th>Nama Petugas</th><th>Peranan</th><th>Telefon</th><th class="text-center">Tindakan</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleTableBody">
+                    <tr><td colspan="8" class="text-center text-muted">Sila tunggu...</td></tr>
+                </tbody>
+              </table>
+            </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: KEMAS KINI JADUAL (POP-UP) -->
+  <div class="modal fade" id="editScheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold">Kemas Kini Petugas (Ad-Hoc)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editScheduleForm">
+              <input type="hidden" id="editSchedId">
+              
+              <div class="mb-2">
+                  <label class="form-label fw-bold small">Nama Petugas</label>
+                  <input type="text" class="form-control form-control-sm" id="editSchedName" required>
+              </div>
+              
+              <div class="row">
+                  <div class="col-6 mb-2">
+                      <label class="form-label fw-bold small">ID Staf <span class="text-success" style="font-size:0.75rem;">(Auto-Fill)</span></label>
+                      <input type="text" class="form-control form-control-sm" id="editSchedStaffId" required>
+                  </div>
+                  <div class="col-6 mb-2">
+                      <label class="form-label fw-bold small">Peranan</label>
+                      <!-- Dropdown akan diisi secara dinamik -->
+                      <select class="form-select form-select-sm" id="editSchedRole"></select>
+                  </div>
+              </div>
+              
+              <div class="row">
+                  <div class="col-6 mb-2">
+                      <label class="form-label fw-bold small">No. Telefon</label>
+                      <input type="text" class="form-control form-control-sm" id="editSchedPhone">
+                  </div>
+                  <div class="col-6 mb-2">
+                      <label class="form-label fw-bold small">Sesi</label>
+                      <!-- Dropdown akan diisi secara dinamik -->
+                      <select class="form-select form-select-sm" id="editSchedSession"></select>
+                  </div>
+              </div>
+              
+              <div class="mb-3">
+                  <label class="form-label fw-bold small">Dewan (Venue)</label>
+                  <input type="text" class="form-control form-control-sm" id="editSchedVenue">
+              </div>
+              
+              <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnSaveSchedule">Simpan Perubahan</button>
+              <div id="editSchedResult" class="mt-2 text-center small fw-bold"></div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -162,12 +240,19 @@
     const MAIN_TENANT = sessionStorage.getItem('tenantId');
     let editingSemId = null;
     let editingConfId = null;
+    let editScheduleModal = null;
+
+    // PEMBOLEHUBAH UNTUK MENYIMPAN SENARAI UNIK DAN BUKU ALAMAT STAF
+    let uniqueRoles = new Set();
+    let uniqueSessions = new Set();
+    let staffDirectory = {};
 
     window.addEventListener('load', () => {
         const uniName = sessionStorage.getItem('uniName');
         if (uniName) {
             document.querySelector('.header-title').innerHTML = `EXACT Admin Portal <br><span style="font-size:0.9rem; font-weight:normal;">${uniName}</span>`;
         }
+        editScheduleModal = new bootstrap.Modal(document.getElementById('editScheduleModal'));
     });
 
     function logout() {
@@ -177,15 +262,11 @@
         window.location.replace('admin-login.html');
     }
 
-    // --- FUNGSI CARIAN JADUAL PINTAR (BARU) ---
     function filterTable(inputId, tbodyId) {
         const input = document.getElementById(inputId).value.toLowerCase();
         const rows = document.getElementById(tbodyId).getElementsByTagName('tr');
-        
         for (let i = 0; i < rows.length; i++) {
-            // Abaikan baris "Sila tunggu..." atau "Tiada data"
             if(rows[i].cells.length === 1 && rows[i].cells[0].colSpan > 1) continue;
-            
             const textData = rows[i].textContent.toLowerCase();
             if (textData.includes(input)) {
                 rows[i].style.display = '';
@@ -193,6 +274,11 @@
                 rows[i].style.display = 'none';
             }
         }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.toString().replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
     // --- TAB 1: MUAT NAIK JADUAL ---
@@ -215,6 +301,7 @@
         if(data.success) {
             resultDiv.innerHTML = `<span class="text-success">${data.message}</span>`;
             document.getElementById('uploadForm').reset();
+            loadSchedules(); // Segar semula jadual secara automatik
         } else {
             resultDiv.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`;
         }
@@ -224,7 +311,7 @@
       });
     });
 
-    // --- TAB 2: SEMESTER ---
+    // --- TAB 2: URUS SEMESTER ---
     function loadSemesters() {
         const tbody = document.getElementById('semTableBody');
         tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Memuatkan...</td></tr>';
@@ -236,23 +323,18 @@
                 return;
             }
             tbody.innerHTML = res.data.map(s => `
-                <tr>
-                    <td>${s.name}</td><td>${s.start_date}</td><td>${s.end_date}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="triggerEditSem('${s.id}', '${s.name.replace(/'/g, "\\'")}', '${s.start_date}', '${s.end_date}')">✏️ Edit</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSemester('${s.id}')">🗑️ Padam</button>
-                    </td>
-                </tr>
+                <tr><td>${s.name}</td><td>${s.start_date}</td><td>${s.end_date}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="triggerEditSem('${s.id}', '${escapeHtml(s.name)}', '${s.start_date}', '${s.end_date}')">✏️ Edit</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteSemester('${s.id}')">🗑️ Padam</button>
+                </td></tr>
             `).join('');
         });
     }
 
     function triggerEditSem(id, name, start, end) {
-        editingSemId = id;
-        document.getElementById('semName').value = name;
-        document.getElementById('semStart').value = start;
-        document.getElementById('semEnd').value = end;
-        
+        editingSemId = id; document.getElementById('semName').value = name;
+        document.getElementById('semStart').value = start; document.getElementById('semEnd').value = end;
         document.getElementById('btnSem').textContent = 'Kemas Kini Semester';
         document.getElementById('btnSem').classList.replace('btn-success', 'btn-primary');
         document.getElementById('btnCancelSem').classList.remove('d-none');
@@ -260,8 +342,7 @@
     }
 
     function cancelEditSem() {
-        editingSemId = null;
-        document.getElementById('semesterForm').reset();
+        editingSemId = null; document.getElementById('semesterForm').reset();
         document.getElementById('btnSem').textContent = 'Simpan Semester';
         document.getElementById('btnSem').classList.replace('btn-primary', 'btn-success');
         document.getElementById('btnCancelSem').classList.add('d-none');
@@ -269,35 +350,22 @@
 
     document.getElementById('semesterForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      const payload = {
-          tenant_id: MAIN_TENANT, 
-          name: document.getElementById('semName').value,
-          start_date: document.getElementById('semStart').value,
-          end_date: document.getElementById('semEnd').value
-      };
-      
+      const payload = { tenant_id: MAIN_TENANT, name: document.getElementById('semName').value, start_date: document.getElementById('semStart').value, end_date: document.getElementById('semEnd').value };
       const btn = document.getElementById('btnSem');
       const url = editingSemId ? `/api/admin/semester/${editingSemId}` : '/api/admin/semester';
       const method = editingSemId ? 'PUT' : 'POST';
-
       btn.disabled = true; btn.textContent = 'Menyimpan...'; 
       fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       .then(res => res.json())
-      .then(data => {
-          cancelEditSem();
-          btn.disabled = false;
-          loadSemesters(); 
-      });
+      .then(data => { cancelEditSem(); btn.disabled = false; loadSemesters(); });
     });
 
     function deleteSemester(id) {
         if(!confirm("Anda pasti mahu memadam semester ini?")) return;
-        fetch(`/api/admin/semester/${id}`, { method: 'DELETE' })
-        .then(res => res.json())
-        .then(() => loadSemesters());
+        fetch(`/api/admin/semester/${id}`, { method: 'DELETE' }).then(res => res.json()).then(() => loadSemesters());
     }
 
-    // --- TAB 3: CONFIG (LOKASI & SESI) ---
+    // --- TAB 3: URUS LOKASI & SESI ---
     function loadConfigs() {
         const tbody = document.getElementById('confTableBody');
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Memuatkan...</td></tr>';
@@ -309,24 +377,19 @@
                 return;
             }
             tbody.innerHTML = res.data.map(c => `
-                <tr>
-                    <td>${c.campus}</td><td>${c.venue}</td><td>${c.exam_session}</td><td>${c.start_time || '-'}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="triggerEditConf('${c.id}', '${c.campus.replace(/'/g, "\\'")}', '${c.venue.replace(/'/g, "\\'")}', '${c.exam_session.replace(/'/g, "\\'")}', '${c.start_time || ''}')">✏️ Edit</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteConfig('${c.id}')">🗑️ Padam</button>
-                    </td>
-                </tr>
+                <tr><td>${c.campus}</td><td>${c.venue}</td><td>${c.exam_session}</td><td>${c.start_time || '-'}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary me-1" onclick="triggerEditConf('${c.id}', '${escapeHtml(c.campus)}', '${escapeHtml(c.venue)}', '${escapeHtml(c.exam_session)}', '${c.start_time || ''}')">✏️ Edit</button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteConfig('${c.id}')">🗑️ Padam</button>
+                </td></tr>
             `).join('');
         });
     }
 
     function triggerEditConf(id, campus, venue, session, time) {
-        editingConfId = id;
-        document.getElementById('confCampus').value = campus;
-        document.getElementById('confVenue').value = venue;
-        document.getElementById('confSession').value = session;
+        editingConfId = id; document.getElementById('confCampus').value = campus;
+        document.getElementById('confVenue').value = venue; document.getElementById('confSession').value = session;
         document.getElementById('confTime').value = time;
-        
         document.getElementById('btnConf').textContent = 'Kemas Kini Lokasi/Sesi';
         document.getElementById('btnConf').classList.replace('btn-warning', 'btn-primary');
         document.getElementById('btnConf').classList.remove('text-dark');
@@ -335,8 +398,7 @@
     }
 
     function cancelEditConf() {
-        editingConfId = null;
-        document.getElementById('configForm').reset();
+        editingConfId = null; document.getElementById('configForm').reset();
         document.getElementById('btnConf').textContent = 'Simpan Lokasi/Sesi';
         document.getElementById('btnConf').classList.replace('btn-primary', 'btn-warning');
         document.getElementById('btnConf').classList.add('text-dark');
@@ -345,34 +407,172 @@
 
     document.getElementById('configForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      const payload = {
-          tenant_id: MAIN_TENANT, 
-          campus: document.getElementById('confCampus').value,
-          venue: document.getElementById('confVenue').value,
-          exam_session: document.getElementById('confSession').value,
-          start_time: document.getElementById('confTime').value || null
-      };
-
+      const payload = { tenant_id: MAIN_TENANT, campus: document.getElementById('confCampus').value, venue: document.getElementById('confVenue').value, exam_session: document.getElementById('confSession').value, start_time: document.getElementById('confTime').value || null };
       const btn = document.getElementById('btnConf');
       const url = editingConfId ? `/api/admin/config/${editingConfId}` : '/api/admin/config';
       const method = editingConfId ? 'PUT' : 'POST';
-
       btn.disabled = true; btn.textContent = 'Menyimpan...'; 
       fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       .then(res => res.json())
-      .then(data => {
-          cancelEditConf();
-          btn.disabled = false;
-          loadConfigs(); 
-      });
+      .then(data => { cancelEditConf(); btn.disabled = false; loadConfigs(); });
     });
 
     function deleteConfig(id) {
         if(!confirm("Anda pasti mahu memadam lokasi/sesi ini?")) return;
-        fetch(`/api/admin/config/${id}`, { method: 'DELETE' })
-        .then(res => res.json())
-        .then(() => loadConfigs());
+        fetch(`/api/admin/config/${id}`, { method: 'DELETE' }).then(res => res.json()).then(() => loadConfigs());
     }
+
+    // --- TAB 4: URUS JADUAL PETUGAS DENGAN AUTO-DROPDOWN & AUTO-FILL ---
+    function loadSchedules() {
+        const tbody = document.getElementById('scheduleTableBody');
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Memuatkan dari pelayan...</td></tr>';
+        
+        fetch(`/api/admin/schedules/${MAIN_TENANT}`)
+        .then(res => res.json())
+        .then(res => {
+            if(!res.success || res.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Tiada jadual ditemui. Sila muat naik fail Excel dahulu.</td></tr>';
+                return;
+            }
+
+            // Kosongkan Set dan Kamus untuk data baru
+            uniqueRoles.clear();
+            uniqueSessions.clear();
+            staffDirectory = {};
+
+            let tableHTML = '';
+
+            res.data.forEach(s => {
+                // Kumpul Data untuk Dropdown Pintar
+                if(s.role) uniqueRoles.add(s.role.trim());
+                if(s.exam_session) uniqueSessions.add(s.exam_session.trim());
+
+                // Bina Buku Alamat Staf (Kumpul Nama dan Telefon berdasarkan ID)
+                if(s.staff_id && s.staff_name) {
+                    if(!staffDirectory[s.staff_id]) {
+                        staffDirectory[s.staff_id] = { name: s.staff_name, phone: s.contact_number || '' };
+                    } else if (s.contact_number && !staffDirectory[s.staff_id].phone) {
+                         staffDirectory[s.staff_id].phone = s.contact_number;
+                    }
+                }
+
+                // Bina Baris Jadual
+                tableHTML += `
+                <tr>
+                    <td>${s.exam_date || '-'}</td>
+                    <td>${s.exam_session || '-'}</td>
+                    <td>${s.venue || '-'}</td>
+                    <td class="fw-bold">${s.staff_id || '-'}</td>
+                    <td>${s.staff_name || '-'}</td>
+                    <td>${s.role || '-'}</td>
+                    <td>${s.contact_number || '-'}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-primary" onclick="triggerEditSchedule('${s.id}', '${escapeHtml(s.staff_id)}', '${escapeHtml(s.staff_name)}', '${escapeHtml(s.role)}', '${escapeHtml(s.contact_number)}', '${escapeHtml(s.venue)}', '${escapeHtml(s.exam_session)}')">✏️ Edit</button>
+                    </td>
+                </tr>`;
+            });
+
+            tbody.innerHTML = tableHTML;
+            
+            // Populasikan Dropdown
+            populateDropdown('editSchedRole', uniqueRoles);
+            populateDropdown('editSchedSession', uniqueSessions);
+
+        })
+        .catch(err => {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Gagal memuat turun data.</td></tr>';
+        });
+    }
+
+    // Fungsi Pembina Dropdown HTML dari Data Set
+    function populateDropdown(selectId, dataSet) {
+        const select = document.getElementById(selectId);
+        select.innerHTML = ''; 
+        const sortedArray = Array.from(dataSet).sort();
+        sortedArray.forEach(item => {
+            if(item) {
+                const opt = document.createElement('option');
+                opt.value = item;
+                opt.text = item;
+                select.appendChild(opt);
+            }
+        });
+    }
+
+    // Fungsi Membuka Modal (Pop-up)
+    function triggerEditSchedule(id, staffId, name, role, phone, venue, session) {
+        document.getElementById('editSchedId').value = id;
+        document.getElementById('editSchedStaffId').value = staffId;
+        document.getElementById('editSchedName').value = name;
+        document.getElementById('editSchedPhone').value = phone;
+        document.getElementById('editSchedVenue').value = venue;
+        
+        const roleSelect = document.getElementById('editSchedRole');
+        const sessionSelect = document.getElementById('editSchedSession');
+        
+        // Pilihan Pintar: Tambah Sementara jika tiada dalam senarai asal Excel
+        if (!Array.from(roleSelect.options).some(opt => opt.value === role)) {
+            roleSelect.add(new Option(role, role));
+        }
+        roleSelect.value = role;
+
+        if (!Array.from(sessionSelect.options).some(opt => opt.value === session)) {
+            sessionSelect.add(new Option(session, session));
+        }
+        sessionSelect.value = session;
+        
+        document.getElementById('editSchedResult').innerHTML = '';
+        editScheduleModal.show();
+    }
+
+    // Fungsi Auto-Fill Apabila Menaip ID Staf
+    document.getElementById('editSchedStaffId').addEventListener('keyup', function() {
+        const typedId = this.value.trim();
+        if(staffDirectory[typedId]) {
+            document.getElementById('editSchedName').value = staffDirectory[typedId].name;
+            document.getElementById('editSchedPhone').value = staffDirectory[typedId].phone || '';
+        }
+    });
+
+    // Fungsi Simpan (Hantar Ke Pelayan)
+    document.getElementById('editScheduleForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const id = document.getElementById('editSchedId').value;
+        const payload = {
+            staff_id: document.getElementById('editSchedStaffId').value,
+            staff_name: document.getElementById('editSchedName').value,
+            role: document.getElementById('editSchedRole').value,
+            contact_number: document.getElementById('editSchedPhone').value,
+            venue: document.getElementById('editSchedVenue').value,
+            exam_session: document.getElementById('editSchedSession').value
+        };
+
+        const btn = document.getElementById('btnSaveSchedule');
+        const resultMsg = document.getElementById('editSchedResult');
+        
+        btn.disabled = true; btn.textContent = 'Menyimpan...'; resultMsg.innerHTML = '';
+
+        fetch(`/api/admin/schedule/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false; btn.textContent = 'Simpan Perubahan';
+            if(data.success) {
+                editScheduleModal.hide(); 
+                loadSchedules(); 
+            } else {
+                resultMsg.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`;
+            }
+        })
+        .catch(err => {
+            btn.disabled = false; btn.textContent = 'Simpan Perubahan';
+            resultMsg.innerHTML = `<span class="text-danger">Gagal menghubungi pelayan.</span>`;
+        });
+    });
   </script>
 </body>
 </html>
