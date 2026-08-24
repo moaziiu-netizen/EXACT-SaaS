@@ -13,7 +13,13 @@
   </script>
   <style>
     body { background-color: #f4f6f8; padding: 40px 0; }
-    .card-super { max-width: 900px; margin: 0 auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); background: #fff; border-top: 5px solid #212529; }
+    /* Menambah kelebaran supaya jadual muat dengan cantik */
+    .card-super { max-width: 1100px; margin: 0 auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); background: #fff; border-top: 5px solid #212529; }
+    
+    .nav-tabs .nav-link.active { font-weight: bold; color: #212529; border-bottom: 3px solid #212529; }
+    .nav-tabs .nav-link { color: #6c757d; border: none; }
+    .badge-open { background-color: #dc3545; color: white; }
+    .badge-resolved { background-color: #198754; color: white; }
   </style>
 </head>
 <body>
@@ -34,47 +40,87 @@
         </div>
       </div>
 
-      <!-- BORANG PENDAFTARAN -->
-      <h6 class="fw-bold text-primary mb-3">+ Daftar Pelanggan (Tenant) Baharu</h6>
-      <form id="tenantForm" class="p-3 bg-light border rounded mb-5">
-        <div class="row">
-            <div class="col-md-12 mb-3">
-                <label class="form-label fw-bold small">Nama Penuh Universiti / Institusi</label>
-                <input type="text" id="tName" class="form-control form-control-sm" placeholder="Contoh: Universiti Teknologi MARA (UiTM)" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold small">ID Log Masuk Admin</label>
-                <input type="text" id="tUser" class="form-control form-control-sm" placeholder="Contoh: admin_uitm" required>
-            </div>
-            <div class="col-md-6 mb-3">
-                <label class="form-label fw-bold small">Kata Laluan</label>
-                <input type="text" id="tPass" class="form-control form-control-sm" placeholder="Contoh: uitm2026" required>
-            </div>
-        </div>
-        <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold" id="btnDaftar">Daftar Pelanggan</button>
-        <div id="resultMsg" class="mt-2 text-center fw-bold small"></div>
-      </form>
-      
-      <!-- JADUAL SENARAI UNIVERSITI -->
-      <h5 class="fw-bold mb-3 text-center">Senarai Universiti Berdaftar</h5>
-      <div class="table-responsive">
-          <table class="table table-bordered table-hover align-middle text-center small">
-              <thead class="table-dark">
-                  <tr>
-                      <th>Nama Universiti</th>
-                      <th>ID Log Masuk</th>
-                      <th>Tindakan (Bypass)</th>
-                  </tr>
-              </thead>
-              <tbody id="tenantTableBody">
-                  <tr><td colspan="3" class="text-muted">Memuatkan data...</td></tr>
-              </tbody>
-          </table>
+      <!-- TABS NAVIGASI -->
+      <ul class="nav nav-tabs mb-4" id="superAdminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-tenants" type="button" role="tab" onclick="loadTenants()">1. Urus Pelanggan (Tenants)</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-tickets" type="button" role="tab" onclick="loadTickets()">2. Tiket Sokongan (Aduan)</button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+          
+          <!-- TAB 1: URUS PELANGGAN -->
+          <div class="tab-pane fade show active" id="tab-tenants" role="tabpanel">
+              <!-- BORANG PENDAFTARAN -->
+              <h6 class="fw-bold text-primary mb-3">+ Daftar Pelanggan (Tenant) Baharu</h6>
+              <form id="tenantForm" class="p-3 bg-light border rounded mb-5">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label fw-bold small">Nama Penuh Universiti / Institusi</label>
+                        <input type="text" id="tName" class="form-control form-control-sm" placeholder="Contoh: Universiti Teknologi MARA (UiTM)" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold small">ID Log Masuk Admin</label>
+                        <input type="text" id="tUser" class="form-control form-control-sm" placeholder="Contoh: admin_uitm" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold small">Kata Laluan</label>
+                        <input type="text" id="tPass" class="form-control form-control-sm" placeholder="Contoh: uitm2026" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-dark btn-sm w-100 fw-bold" id="btnDaftar">Daftar Pelanggan</button>
+                <div id="resultMsg" class="mt-2 text-center fw-bold small"></div>
+              </form>
+              
+              <!-- JADUAL SENARAI UNIVERSITI -->
+              <h5 class="fw-bold mb-3 text-center">Senarai Universiti Berdaftar</h5>
+              <div class="table-responsive">
+                  <table class="table table-bordered table-hover align-middle text-center small">
+                      <thead class="table-dark">
+                          <tr>
+                              <th>Nama Universiti</th>
+                              <th>ID Log Masuk</th>
+                              <th>Tindakan (Bypass)</th>
+                          </tr>
+                      </thead>
+                      <tbody id="tenantTableBody">
+                          <tr><td colspan="3" class="text-muted">Memuatkan data...</td></tr>
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+
+          <!-- TAB 2: TIKET SOKONGAN -->
+          <div class="tab-pane fade" id="tab-tickets" role="tabpanel">
+              <h5 class="fw-bold mb-3">Peti Masuk Tiket Sokongan</h5>
+              <div class="table-responsive">
+                  <table class="table table-bordered table-hover align-middle small">
+                      <thead class="table-dark">
+                          <tr>
+                              <th style="width: 20%">Universiti</th>
+                              <th style="width: 15%">Kategori</th>
+                              <th style="width: 35%">Mesej Aduan</th>
+                              <th style="width: 10%" class="text-center">Lampiran</th>
+                              <th style="width: 10%" class="text-center">Status</th>
+                              <th style="width: 10%" class="text-center">Tindakan</th>
+                          </tr>
+                      </thead>
+                      <tbody id="ticketTableBody">
+                          <tr><td colspan="6" class="text-center text-muted">Memuatkan tiket dari pelayan...</td></tr>
+                      </tbody>
+                  </table>
+              </div>
+          </div>
+
       </div>
 
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // 1. Fungsi Log Keluar Super Admin
     function logoutSuper() {
@@ -84,12 +130,14 @@
 
     // 2. Fungsi Muat Senarai Universiti
     function loadTenants() {
+        const tbody = document.getElementById('tenantTableBody');
+        tbody.innerHTML = '<tr><td colspan="3" class="text-muted text-center">Memuatkan data...</td></tr>';
+        
         fetch('/api/superadmin/tenants')
         .then(res => res.json())
         .then(res => {
-            const tbody = document.getElementById('tenantTableBody');
             if(!res.success || res.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="text-muted">Tiada universiti direkodkan.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" class="text-muted text-center">Tiada universiti direkodkan.</td></tr>';
                 return;
             }
             tbody.innerHTML = res.data.map(t => `
@@ -106,55 +154,114 @@
         });
     }
 
-    // Panggil fungsi muat data apabila halaman dibuka
+    // Automuat Tab 1 ketika halaman dibuka
     window.addEventListener('load', loadTenants);
 
     // 3. Fungsi Ajaib: Memintas (Bypass) Log Masuk Admin
     function impersonate(tenantId, uniName) {
-        // Kita cipta "Kunci Palsu" di memori pelayar supaya admin.html ingat kita dah log masuk
         sessionStorage.setItem('adminToken', 'kunci-rahsia-exact-2026');
         sessionStorage.setItem('tenantId', tenantId);
         sessionStorage.setItem('uniName', uniName);
-        
-        // Buka portal admin di tab baharu
         window.open('admin.html', '_blank');
     }
 
     // 4. Fungsi Daftar Universiti
-    document.getElementById('tenantForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const btn = document.getElementById('btnDaftar');
-      const msg = document.getElementById('resultMsg');
-      
-      const payload = {
-          tenant_name: document.getElementById('tName').value,
-          username: document.getElementById('tUser').value,
-          password: document.getElementById('tPass').value
-      };
+    const tenantFormEl = document.getElementById('tenantForm');
+    if (tenantFormEl) {
+        tenantFormEl.addEventListener('submit', function(e) {
+          e.preventDefault();
+          const btn = document.getElementById('btnDaftar');
+          const msg = document.getElementById('resultMsg');
+          
+          const payload = {
+              tenant_name: document.getElementById('tName').value,
+              username: document.getElementById('tUser').value,
+              password: document.getElementById('tPass').value
+          };
 
-      btn.disabled = true; btn.textContent = 'Mendaftarkan...'; msg.innerHTML = '';
+          btn.disabled = true; btn.textContent = 'Mendaftarkan...'; msg.innerHTML = '';
 
-      fetch('/api/superadmin/tenant', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-      })
-      .then(res => res.json())
-      .then(data => {
-          btn.disabled = false; btn.textContent = 'Daftar Pelanggan';
-          if(data.success) {
-              msg.innerHTML = `<span class="text-success">${data.message}</span>`;
-              document.getElementById('tenantForm').reset();
-              loadTenants(); // <--- Refresh jadual automatik lepas daftar!
-          } else {
-              msg.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`;
-          }
-      })
-      .catch(err => {
-          btn.disabled = false; btn.textContent = 'Daftar Pelanggan';
-          msg.innerHTML = `<span class="text-danger">Gagal menghubungi pelayan.</span>`;
-      });
-    });
+          fetch('/api/superadmin/tenant', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+          })
+          .then(res => res.json())
+          .then(data => {
+              btn.disabled = false; btn.textContent = 'Daftar Pelanggan';
+              if(data.success) {
+                  msg.innerHTML = `<span class="text-success">${data.message}</span>`;
+                  document.getElementById('tenantForm').reset();
+                  loadTenants(); // Refresh jadual automatik lepas daftar
+              } else {
+                  msg.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`;
+              }
+          })
+          .catch(err => {
+              btn.disabled = false; btn.textContent = 'Daftar Pelanggan';
+              msg.innerHTML = `<span class="text-danger">Gagal menghubungi pelayan.</span>`;
+          });
+        });
+    }
+
+    // --- FUNGSI TAB 2: TIKET SOKONGAN ---
+    function loadTickets() {
+        const tbody = document.getElementById('ticketTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Memuatkan dari pelayan...</td></tr>';
+        
+        fetch('/api/superadmin/tickets')
+        .then(res => res.json())
+        .then(res => {
+            if(!res.success || res.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Tiada aduan baharu.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = res.data.map(t => {
+                const statusBadge = t.status === 'Open' 
+                    ? `<span class="badge badge-open">Open</span>` 
+                    : `<span class="badge badge-resolved">Selesai</span>`;
+                
+                const attachmentBtn = t.attachment_url 
+                    ? `<a href="${t.attachment_url}" target="_blank" class="btn btn-sm btn-outline-info fw-bold w-100">🖼️ Lihat</a>` 
+                    : `<span class="text-muted text-center d-block">Tiada</span>`;
+
+                const actionBtn = t.status === 'Open'
+                    ? `<button class="btn btn-sm btn-success fw-bold w-100" onclick="updateTicketStatus('${t.id}', 'Resolved')">✓ Tutup Kes</button>`
+                    : `<button class="btn btn-sm btn-warning text-dark fw-bold w-100" onclick="updateTicketStatus('${t.id}', 'Open')">Buka Semula</button>`;
+
+                return `
+                <tr>
+                    <td class="fw-bold text-primary">${t.tenant_name || '<small class="text-muted">Tiada Nama</small>'}</td>
+                    <td><span class="badge bg-secondary">${t.category}</span></td>
+                    <td>${t.message}</td>
+                    <td class="text-center align-middle">${attachmentBtn}</td>
+                    <td class="text-center align-middle">${statusBadge}</td>
+                    <td class="text-center align-middle">${actionBtn}</td>
+                </tr>`;
+            }).join('');
+        }).catch(() => { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Gagal menghubungi pelayan.</td></tr>'; });
+    }
+
+    function updateTicketStatus(ticketId, newStatus) {
+        const textConfirm = newStatus === 'Resolved' ? 'MENUTUP (menyelesaikan)' : 'MEMBUKA SEMULA';
+        if(!confirm(`Adakah anda pasti mahu ${textConfirm} tiket ini?`)) return;
+
+        fetch(`/api/superadmin/ticket/${ticketId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                loadTickets(); // Refresh senarai jadual secara automatik
+            } else {
+                alert("Gagal mengemas kini: " + data.message);
+            }
+        })
+        .catch(err => alert("Gagal berhubung dengan pelayan."));
+    }
   </script>
 </body>
 </html>

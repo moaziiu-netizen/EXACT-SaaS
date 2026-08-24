@@ -62,60 +62,94 @@ app.get('/api/config/:tenant_id', async (req, res) => {
 // API 2: Carian Butiran Staf (Auto-fill Check-In)
 // =====================================================
 app.get('/api/staff-today/:tenant_id/:staff_id', async (req, res) => {
-    const { tenant_id, staff_id } = req.params;
-    
-    // Dapatkan tarikh hari ini
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }); 
-    
-    const { data, error } = await supabase
-        .from('duty_schedule')
-        .select('*')
-        .eq('tenant_id', tenant_id)
-        .eq('staff_id', staff_id)
-        //.eq('exam_date', today);
+    try {
+        const { tenant_id, staff_id } = req.params;
+        
+        const now = new Date();
+        // Format YYYY-MM-DD untuk carian pangkalan data Supabase
+        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }); 
+        // Format DD/MM/YYYY untuk paparan teks amaran pengguna
+        const displayDateStr = now.toLocaleDateString('en-GB', { timeZone: 'Asia/Kuala_Lumpur' }); 
+        
+        const { data, error } = await supabase
+            .from('duty_schedule')
+            .select('*')
+            .eq('tenant_id', tenant_id)
+            .eq('staff_id', staff_id)
+            .eq('exam_date', todayStr); 
 
-    if (error) {
-        return res.status(400).json({ success: false, message: error.message });
-    }
-    
-    if (!data || data.length === 0) {
-        return res.status(404).json({ success: false, message: `ID Staf ${staff_id} tidak ditemui dalam jadual hari ini.` });
-    }
-    
-    const staffDetails = {
-        name: data[0].staff_name,
-        staffId: data[0].staff_id,
-        role: data[0].role,
-        campus: data[0].campus,
-        venue: data[0].venue,
-        session: data[0].exam_session,
-        assignedCourses: []
-    };
-    
-    data.forEach(row => {
-        if (row.course_code) {
-            staffDetails.assignedCourses.push({
-                code: row.course_code,
-                desc: row.course_desc,
-                st: row.start_time,
-                et: row.end_time,
-                ss: row.start_seat,
-                es: row.end_seat,
-                tot: row.total_student
+        if (error) {
+            return res.status(400).json({ success: false, message: error.message });
+        }
+        
+        // Jika petugas TIADA dalam jadual pada hari ini (Guna displayDateStr di sini)
+        if (!data || data.length === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: `Harap maklum. Petugas (ID: ${staff_id}) tiada dalam jadual peperiksaan pada hari ini (${displayDateStr}).` 
             });
         }
-    });
-    
-    res.status(200).json({ success: true, data: staffDetails });
+        
+        const staffDetails = {
+            name: data[0].staff_name,
+            staffId: data[0].staff_id,
+            role: data[0].role,
+            campus: data[0].campus,
+            venue: data[0].venue,
+            session: data[0].exam_session,
+            assignedCourses: []
+        };
+        
+        data.forEach(row => {
+            if (row.course_code) {
+                staffDetails.assignedCourses.push({
+                    code: row.course_code,
+                    desc: row.course_desc,
+                    st: row.start_time,
+                    et: row.end_time,
+                    ss: row.start_seat,
+                    es: row.end_seat,
+                    tot: row.total_student
+                });
+            }
+        });
+        
+        res.status(200).json({ success: true, data: staffDetails });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // =====================================================
-// API 3: Check-In Bersepadu (Logik Masa & Anti-Spam)
+// API 3: Check-In Bersepadu (Logik Masa, Anti-Spam & PASSCODE)
 // =====================================================
 app.post('/api/checkin', async (req, res) => {
-    const { tenant_id, staffId, name, role, campus, venue, session, remarks } = req.body;
+    // KITA TAMBAH 'passcode' DI DALAM REQ.BODY INI
+    const { tenant_id, staffId, name, role, campus, venue, session, remarks, passcode } = req.body;
 
     try {
+        // --- KOD BAHARU: 1. PENGESAHAN PASSCODE DARI JADUAL 'config' ---
+        const { data: configData, error: configErr } = await supabase
+            .from('config')
+            .select('passcode')
+            .eq('tenant_id', tenant_id)
+            .eq('campus', campus)
+            .eq('venue', venue)
+            .eq('exam_session', session)
+            .single();
+
+        // Jika admin ada menetapkan passcode untuk dewan ini, semak adakah ia sama
+        if (configData && configData.passcode) {
+            if (configData.passcode !== passcode) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Passcode (Kod Laluan) salah! Sila rujuk Ketua Pengawas di dalam dewan.' 
+                });
+            }
+        }
+        // ----------------------------------------------------------------
+
+        // --- (KOD ASAL ANDA KEKAL DI BAWAH INI) ---
         const now = new Date();
         const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
         const currentTimeStr = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kuala_Lumpur', hour12: false });
@@ -822,31 +856,36 @@ app.put('/api/admin/semester/:id', async (req, res) => {
 });
 
 // =====================================================
-// API 22: Kemaskini Lokasi & Sesi (Admin)
+// API 22: Tambah Lokasi & Sesi Baru (+ Passcode)
 // =====================================================
-app.put('/api/admin/config/:id', async (req, res) => {
-    const { campus, venue, exam_session, start_time } = req.body;
-    const { error } = await supabase.from('config')
-        .update({ campus, venue, exam_session, start_time })
-        .eq('id', req.params.id);
+app.post('/api/admin/config', async (req, res) => {
+    try {
+        const { tenant_id, campus, venue, exam_session, start_time, passcode } = req.body;
+        const { data, error } = await supabase
+            .from('config') // <--- DIBETULKAN
+            .insert([{ tenant_id, campus, venue, exam_session, start_time, passcode }]);
         
-    if (error) return res.status(400).json({ success: false, message: error.message });
-    res.status(200).json({ success: true, message: 'Lokasi/Sesi berjaya dikemas kini!' });
+        if (error) throw error;
+        res.status(201).json({ success: true, message: 'Lokasi & Sesi berjaya ditambah.', data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // =====================================================
-// API 23: Daftar Universiti Baru (Modul Super-Admin)
+// API 23: Kemas Kini Lokasi & Sesi (+ Passcode)
 // =====================================================
-app.post('/api/superadmin/tenant', async (req, res) => {
-    const { tenant_name, username, password } = req.body;
+app.put('/api/admin/config/:id', async (req, res) => {
     try {
+        const configId = req.params.id;
+        const { campus, venue, exam_session, start_time, passcode } = req.body;
         const { data, error } = await supabase
-            .from('tenants')
-            .insert([{ tenant_name, username, password }])
-            .select();
+            .from('config') // <--- DIBETULKAN
+            .update({ campus, venue, exam_session, start_time, passcode })
+            .eq('id', configId);
 
         if (error) throw error;
-        res.status(200).json({ success: true, message: 'Universiti baharu berjaya didaftarkan!', data });
+        res.status(200).json({ success: true, message: 'Lokasi & Sesi dikemas kini.', data });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -933,6 +972,102 @@ app.put('/api/admin/schedule/:id', async (req, res) => {
 
         if (error) throw error;
         res.status(200).json({ success: true, message: 'Jadual petugas berjaya dikemas kini.', data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+// =====================================================
+// API 28: Hantar Tiket Sokongan (Dengan Upload Fail)
+// =====================================================
+// Kita gunakan upload.single('attachment') untuk menangkap fail
+app.post('/api/admin/support', upload.single('attachment'), async (req, res) => {
+    try {
+        const { tenant_id, tenant_name, category, message } = req.body; 
+        let attachment_url = null;
+        
+        if (!tenant_id || !category || !message) {
+            return res.status(400).json({ success: false, message: 'Sila lengkapkan maklumat kategori dan mesej.' });
+        }
+
+        // --- PROSES UPLOAD FAIL KE SUPABASE STORAGE (JIKA ADA FAIL) ---
+        if (req.file) {
+            const fileExt = path.extname(req.file.originalname);
+            // Hasilkan nama fail unik (Cth: 16900000-12345.png)
+            const fileName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExt}`;
+            const filePath = `tickets/${tenant_id}/${fileName}`;
+
+            // Muat naik ke tong 'support_attachments'
+            const { data: uploadData, error: uploadError } = await supabase
+                .storage
+                .from('support_attachments')
+                .upload(filePath, req.file.buffer, {
+                    contentType: req.file.mimetype
+                });
+
+            if (uploadError) throw uploadError;
+
+            // Dapatkan pautan awam (Public URL) fail tersebut
+            const { data: publicUrlData } = supabase
+                .storage
+                .from('support_attachments')
+                .getPublicUrl(filePath);
+
+            attachment_url = publicUrlData.publicUrl;
+        }
+
+        // --- MASUKKAN DATA KE DALAM JADUAL ---
+        const { error } = await supabase
+            .from('support_tickets')
+            .insert([{ 
+                tenant_id, 
+                tenant_name, 
+                category, 
+                message, 
+                attachment_url, // Masukkan URL fail
+                status: 'Open' 
+            }]); 
+
+        if (error) throw error;
+        
+        res.status(200).json({ success: true, message: 'Mesej & lampiran anda telah berjaya dihantar kepada Super-Admin!' });
+    } catch (err) {
+        console.error("Ralat Upload Support:", err.message);
+        res.status(500).json({ success: false, message: "Ralat: " + err.message });
+    }
+});
+// =====================================================
+// API 29: Tarik Semua Tiket Sokongan (Super-Admin)
+// =====================================================
+app.get('/api/superadmin/tickets', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('support_tickets')
+            .select('*')
+            // Susun tiket dari yang paling baharu
+            .order('created_at', { ascending: false }); 
+
+        if (error) throw error;
+        res.status(200).json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// =====================================================
+// API 30: Tukar Status Tiket (Super-Admin)
+// =====================================================
+app.put('/api/superadmin/ticket/:id', async (req, res) => {
+    try {
+        const ticketId = req.params.id;
+        const { status } = req.body;
+        
+        const { error } = await supabase
+            .from('support_tickets')
+            .update({ status: status })
+            .eq('id', ticketId);
+
+        if (error) throw error;
+        res.status(200).json({ success: true, message: 'Status tiket berjaya dikemas kini!' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }

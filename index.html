@@ -174,9 +174,10 @@
             <label class="form-label">Exam Session</label>
             <select id="session" class="form-select" required disabled></select>
           </div>
+          <!-- KOD BAHARU: Kotak Passcode -->
           <div class="col-12">
-            <label class="form-label">Remarks (optional)</label>
-            <input id="remarks" class="form-control" placeholder="e.g. swapped with: Aminah binti Abu (ID)">
+            <label class="form-label fw-bold" style="color: #c62828;">Passcode / Pin Dewan</label>
+            <input id="passcode" type="password" class="form-control border-danger" placeholder="Masukkan 4-digit Pin (Jika diminta oleh Ketua Pengawas)" maxlength="6">
           </div>
 
           <div id="courseInfoBox" class="col-12 d-none mt-3">
@@ -937,7 +938,8 @@
         campus: document.getElementById('campus').value,
         venue: document.getElementById('venue').value, 
         session: document.getElementById('session').value,
-        remarks: document.getElementById('remarks').value.trim()
+        remarks: document.getElementById('remarks').value.trim(),
+        passcode: document.getElementById('passcode').value.trim() // <--- TAMBAH BARIS INI
       };
 
       if (!form.name || !form.staffId || !form.role || !form.campus || !form.venue || !form.session) {
