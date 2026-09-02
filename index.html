@@ -18,9 +18,9 @@
       --brand-yellow: #F5C000;
       --brand-gray:   #f4f6f8;
     }
-    html, body { height: 100%; background-color: var(--brand-gray); }
+    html, body { height: 100%; background-color: var(--brand-gray); transition: all 0.3s ease; }
     .wrap { max-width: 95%; margin: 20px auto; }
-    .card { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.06); }
+    .card { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.06); transition: all 0.3s ease; }
 
     .brand-bar {
       background: linear-gradient(90deg, var(--brand-blue), var(--brand-teal));
@@ -28,6 +28,7 @@
       padding: 10px 14px;
       color: #fff;
       display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center;
+      transition: background 0.3s ease;
     }
     .brand-title { display:flex; flex-direction:column; gap:2px; cursor: pointer; }
     .brand-title h3 { margin:0; font-weight:700; letter-spacing:.2px; }
@@ -45,8 +46,8 @@
     #navReports { background: #6c757d; color:#fff; }
     #navReports:hover, #navReports.active { background:#5c636a; color:#fff; box-shadow: 0 0 0 3px rgba(245,192,0,.25); }
 
-    .tableWrap{ overflow: auto; max-height: 60vh; border: 1px solid rgba(0,0,0,0.08); border-radius: .5rem; background: #fff; }
-    .tableWrap table { white-space: nowrap; }
+    .tableWrap{ overflow: auto; max-height: 60vh; border: 1px solid rgba(0,0,0,0.08); border-radius: .5rem; background: transparent; }
+    .tableWrap table { white-space: nowrap; margin-bottom: 0; }
     thead th { position: sticky; top: 0; z-index: 1; background: #eaf6f6; color: #0b3c4c; }
 
     .status-on  { color: #178a00; font-weight: 700; }
@@ -75,15 +76,15 @@
 <body>
   <div class="wrap">
     <div class="brand-bar mb-3">
+      <!-- RUANG LOGO & NAMA UNIVERSITI -->
       <div class="d-flex align-items-center gap-3">
-        <!-- Ruangan Logo Universiti -->
-        <img id="tenantLogo" src="" alt="Logo" class="d-none" style="height: 50px; max-width: 150px; object-fit: contain; background: white; padding: 4px; border-radius: 6px;">
-        
+        <img id="tenantLogo" src="" alt="Logo" class="d-none" style="height: 55px; max-width: 180px; object-fit: contain; background: white; padding: 4px; border-radius: 6px;">
         <div class="brand-title" onclick="route('home')" title="Go to Home">
           <h3 class="m-0">EXACT - Examination Attendance and Checkout Tracker</h3>
           <small id="headerUniName">Examination Attendance and Checkout Tracker</small>
         </div>
       </div>
+
       <div class="btn-group flex-wrap">
         <button id="navHome" class="btn nav-btn" onclick="route('home')">Home</button>
         <button id="navCheckin" class="btn nav-btn text-white" onclick="route('checkin')">Check-In</button>
@@ -179,7 +180,6 @@
             <label class="form-label">Exam Session</label>
             <select id="session" class="form-select" required disabled></select>
           </div>
-          <!-- KOD BAHARU: Kotak Passcode -->
           <div class="col-12">
             <label class="form-label fw-bold" style="color: #c62828;">Passcode / Pin Dewan</label>
             <input id="passcode" type="password" class="form-control border-danger" placeholder="Masukkan 4-digit Pin (Jika diminta oleh Ketua Pengawas)" maxlength="6">
@@ -232,7 +232,7 @@
 
         <div class="mt-3">
           <label class="form-label">Select name (today only)</label>
-          <div class="tableWrap">
+          <div class="tableWrap bg-white">
             <table class="table table-sm mb-0 align-middle">
               <thead>
                 <tr>
@@ -352,7 +352,7 @@
     <!-- REPORTS SCREEN -->
     <section id="screen-reports" class="d-none">
       <div class="card p-4">
-        <h4 class="text-center mb-4 text-navy fw-bold">Reports Summary</h4>
+        <h4 class="text-center mb-4 fw-bold" style="color: var(--brand-navy);">Reports Summary</h4>
         <div class="row g-3 align-items-end mb-4 p-3 border rounded bg-white">
           <div class="col-md-4">
              <label class="form-label fw-bold">Filter By Semester</label>
@@ -395,7 +395,7 @@
                  <h5 id="dynamicReportTitle" class="fw-bold m-0" style="color:var(--brand-navy);">Report List</h5>
                  <button class="btn btn-sm btn-danger fw-bold" onclick="downloadReportPDF()">Download PDF</button>
              </div>
-             <div class="tableWrap" style="max-height: 400px;">
+             <div class="tableWrap bg-white" style="max-height: 400px;">
                <table class="table table-sm table-striped align-middle" id="reportDataTable">
                  <thead id="reportDataHead"></thead>
                  <tbody id="reportDataBody"></tbody>
@@ -444,20 +444,24 @@
         throw new Error("Sistem dihentikan: Tiada Tenant ID pada pautan URL.");
     }
 
+    // ==========================================
+    // 2. ENJIN TEMA (WHITE-LABELING) - FASA 4
+    // ==========================================
     window.addEventListener('load', () => {
         const uniLabel = document.getElementById('headerUniName');
         
-        // 1. TAMPAL NAMA TERUS DARI URL (Pembaikan Segera & Kekal!)
+        // Letakkan nama serta merta (Elak delay)
         if(uniLabel && UNI_NAME) {
             uniLabel.innerText = UNI_NAME;
         }
 
-        // 2. TARIK TEMA & LOGO DARI PELAYAN (FASA 4)
+        // Tarik tema dari pangkalan data
         fetch(`/api/tenant-info/${TENANT_ID}`)
         .then(res => res.json())
         .then(res => {
             if(res.success && res.data) {
-                // Terapkan Logo Jika Ada
+                
+                // Terapkan Logo
                 const logoImg = document.getElementById('tenantLogo');
                 if(res.data.logo_url && logoImg) {
                     logoImg.src = res.data.logo_url;
@@ -469,36 +473,43 @@
                 const root = document.documentElement;
 
                 if (mode === 'Custom') {
-                    if(res.data.color_header) root.style.setProperty('--brand-blue', res.data.color_header);
+                    if(res.data.color_header) {
+                        root.style.setProperty('--brand-blue', res.data.color_header);
+                        document.querySelector('.brand-bar').style.background = res.data.color_header; 
+                    }
                     if(res.data.color_button) root.style.setProperty('--brand-teal', res.data.color_button);
-                    if(res.data.color_header) document.querySelector('.brand-bar').style.background = res.data.color_header;
                     if(res.data.color_text) document.body.style.color = res.data.color_text;
+                
                 } else if (mode === 'Warm') {
                     root.style.setProperty('--brand-blue', '#D35400');
                     root.style.setProperty('--brand-teal', '#E67E22');
                     root.style.setProperty('--brand-navy', '#A04000');
                     document.querySelector('.brand-bar').style.background = 'linear-gradient(90deg, #D35400, #E67E22)';
+                
                 } else if (mode === 'Vivid') {
                     root.style.setProperty('--brand-blue', '#8E44AD');
                     root.style.setProperty('--brand-teal', '#2980B9');
                     root.style.setProperty('--brand-navy', '#2C3E50');
                     document.querySelector('.brand-bar').style.background = 'linear-gradient(90deg, #8E44AD, #2980B9)';
+                
                 } else if (mode === 'Dark') {
-                    // Pakej Dark Mode
                     root.style.setProperty('--brand-gray', '#1e1e1e');
                     root.style.setProperty('--brand-blue', '#333333');
                     root.style.setProperty('--brand-teal', '#555555');
                     root.style.setProperty('--brand-navy', '#000000');
-                    document.body.style.color = '#ffffff';
+                    document.body.style.color = '#e0e0e0';
                     document.querySelector('.brand-bar').style.background = '#000000';
+                    
                     document.querySelectorAll('.card').forEach(c => {
                         c.style.backgroundColor = '#2c2c2c';
                         c.style.borderColor = '#444';
                         c.style.color = '#fff';
                     });
-                    document.querySelectorAll('table, th, td').forEach(t => {
-                        t.style.color = '#fff';
-                        t.style.backgroundColor = '#2c2c2c';
+                    
+                    document.querySelectorAll('.tableWrap, .form-control, .form-select, input').forEach(el => {
+                        el.style.backgroundColor = '#333';
+                        el.style.color = '#fff';
+                        el.style.borderColor = '#555';
                     });
                 }
             }
@@ -507,7 +518,7 @@
     });
 
     // ==========================================
-    // 2. FUNGSI SOKONGAN & UTILITI
+    // 3. FUNGSI SOKONGAN & UTILITI
     // ==========================================
     function toIsoFromDisplay(ddmmyyyy){
       if(!ddmmyyyy) return '';
@@ -999,7 +1010,7 @@
         venue: document.getElementById('venue').value, 
         session: document.getElementById('session').value,
         remarks: document.getElementById('remarks').value.trim(),
-        passcode: document.getElementById('passcode').value.trim() // <--- TAMBAH BARIS INI
+        passcode: document.getElementById('passcode').value.trim() 
       };
 
       if (!form.name || !form.staffId || !form.role || !form.campus || !form.venue || !form.session) {
