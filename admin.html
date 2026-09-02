@@ -530,7 +530,12 @@
     // ==========================================
     // FUNGSI TAB 7: PENJENAMAAN (BRANDING)
     // ==========================================
-    const colorThief = new ColorThief();
+    let colorThief;
+    try { 
+        colorThief = new ColorThief(); 
+    } catch(err) { 
+        console.warn("Sistem Color Thief sedang dimuatkan secara manual..."); 
+    }
     const logoImg = document.getElementById('logoPreview');
 
     function loadBranding() {
@@ -557,9 +562,13 @@
     logoImg.addEventListener('load', function() {
         if (logoImg.src.includes('placeholder')) return;
         try {
+            // Pastikan Color Thief wujud sebelum menyedut warna
+            if (!colorThief) colorThief = new ColorThief();
+            
             const palette = colorThief.getPalette(logoImg, 5);
             const paletteBox = document.getElementById('colorPalette');
             paletteBox.innerHTML = '';
+            
             if (palette) {
                 document.getElementById('extractedColorsBox').classList.remove('d-none');
                 palette.forEach(rgb => {
@@ -567,7 +576,9 @@
                     paletteBox.insertAdjacentHTML('beforeend', `<div style="width: 32px; height: 32px; background-color: ${hex}; border-radius: 50%; cursor: pointer; border: 2px solid #ddd; transition: transform 0.2s;" onclick="applySuggestedColor('${hex}')" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></div>`);
                 });
             }
-        } catch(e) { console.log("Imej cross-origin belum diproses sepenuhnya."); }
+        } catch(e) { 
+            console.log("Imej sedang diproses dari pelayan."); 
+        }
     });
 
     function rgbToHex(r, g, b) {
