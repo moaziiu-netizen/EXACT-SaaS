@@ -75,9 +75,14 @@
 <body>
   <div class="wrap">
     <div class="brand-bar mb-3">
-      <div class="brand-title" onclick="route('home')" title="Go to Home">
-        <h3 class="m-0">EXACT - Examination Attendance and Checkout Tracker</h3>
-        <small id="headerUniName">Examination Attendance and Checkout Tracker</small>
+      <div class="d-flex align-items-center gap-3">
+        <!-- Ruangan Logo Universiti -->
+        <img id="tenantLogo" src="" alt="Logo" class="d-none" style="height: 50px; max-width: 150px; object-fit: contain; background: white; padding: 4px; border-radius: 6px;">
+        
+        <div class="brand-title" onclick="route('home')" title="Go to Home">
+          <h3 class="m-0">EXACT - Examination Attendance and Checkout Tracker</h3>
+          <small id="headerUniName">Examination Attendance and Checkout Tracker</small>
+        </div>
       </div>
       <div class="btn-group flex-wrap">
         <button id="navHome" class="btn nav-btn" onclick="route('home')">Home</button>
@@ -440,25 +445,65 @@
     }
 
     window.addEventListener('load', () => {
-        // Tarik Nama Universiti & Warna Tema dari Pelayan
+        const uniLabel = document.getElementById('headerUniName');
+        
+        // 1. TAMPAL NAMA TERUS DARI URL (Pembaikan Segera & Kekal!)
+        if(uniLabel && UNI_NAME) {
+            uniLabel.innerText = UNI_NAME;
+        }
+
+        // 2. TARIK TEMA & LOGO DARI PELAYAN (FASA 4)
         fetch(`/api/tenant-info/${TENANT_ID}`)
         .then(res => res.json())
         .then(res => {
-            if(res.success) {
-                // Kemas kini nama universiti pada Header
-                const uniLabel = document.getElementById('headerUniName');
-                if(uniLabel) {
-                    uniLabel.innerText = res.data.tenant_name || UNI_NAME || 'Examination Attendance';
+            if(res.success && res.data) {
+                // Terapkan Logo Jika Ada
+                const logoImg = document.getElementById('tenantLogo');
+                if(res.data.logo_url && logoImg) {
+                    logoImg.src = res.data.logo_url;
+                    logoImg.classList.remove('d-none');
                 }
-                
-                // Tukar warna tema secara magik!
-                if(res.data.theme_color) {
-                    document.documentElement.style.setProperty('--brand-blue', res.data.theme_color);
-                    document.documentElement.style.setProperty('--brand-navy', res.data.theme_color);
+
+                // Terapkan Mod Tema
+                const mode = res.data.theme_mode || 'Default';
+                const root = document.documentElement;
+
+                if (mode === 'Custom') {
+                    if(res.data.color_header) root.style.setProperty('--brand-blue', res.data.color_header);
+                    if(res.data.color_button) root.style.setProperty('--brand-teal', res.data.color_button);
+                    if(res.data.color_header) document.querySelector('.brand-bar').style.background = res.data.color_header;
+                    if(res.data.color_text) document.body.style.color = res.data.color_text;
+                } else if (mode === 'Warm') {
+                    root.style.setProperty('--brand-blue', '#D35400');
+                    root.style.setProperty('--brand-teal', '#E67E22');
+                    root.style.setProperty('--brand-navy', '#A04000');
+                    document.querySelector('.brand-bar').style.background = 'linear-gradient(90deg, #D35400, #E67E22)';
+                } else if (mode === 'Vivid') {
+                    root.style.setProperty('--brand-blue', '#8E44AD');
+                    root.style.setProperty('--brand-teal', '#2980B9');
+                    root.style.setProperty('--brand-navy', '#2C3E50');
+                    document.querySelector('.brand-bar').style.background = 'linear-gradient(90deg, #8E44AD, #2980B9)';
+                } else if (mode === 'Dark') {
+                    // Pakej Dark Mode
+                    root.style.setProperty('--brand-gray', '#1e1e1e');
+                    root.style.setProperty('--brand-blue', '#333333');
+                    root.style.setProperty('--brand-teal', '#555555');
+                    root.style.setProperty('--brand-navy', '#000000');
+                    document.body.style.color = '#ffffff';
+                    document.querySelector('.brand-bar').style.background = '#000000';
+                    document.querySelectorAll('.card').forEach(c => {
+                        c.style.backgroundColor = '#2c2c2c';
+                        c.style.borderColor = '#444';
+                        c.style.color = '#fff';
+                    });
+                    document.querySelectorAll('table, th, td').forEach(t => {
+                        t.style.color = '#fff';
+                        t.style.backgroundColor = '#2c2c2c';
+                    });
                 }
             }
         })
-        .catch(err => console.error("Gagal menarik info universiti:", err));
+        .catch(err => console.error("Gagal menarik info penjenamaan:", err));
     });
 
     // ==========================================
