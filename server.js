@@ -1072,6 +1072,42 @@ app.put('/api/superadmin/ticket/:id', async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 });
+
+// =====================================================
+// API 31: Baca Info Universiti & Warna Tema (Untuk Skrin Live)
+// =====================================================
+app.get('/api/tenant-info/:id', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('tenants')
+            .select('tenant_name, theme_color')
+            .eq('id', req.params.id)
+            .single();
+
+        if (error) throw error;
+        res.status(200).json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// =====================================================
+// API 32: Kemas Kini Warna Tema (Dari Portal Admin)
+// =====================================================
+app.put('/api/admin/theme', async (req, res) => {
+    try {
+        const { tenant_id, theme_color } = req.body;
+        const { error } = await supabase
+            .from('tenants')
+            .update({ theme_color })
+            .eq('id', tenant_id);
+
+        if (error) throw error;
+        res.status(200).json({ success: true, message: 'Warna tema berjaya dikemas kini!' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 // Hidupkan Pelayan
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

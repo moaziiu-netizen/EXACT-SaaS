@@ -11,24 +11,28 @@
     }
   </script>
   <style>
+    :root { --primary-color: #004A98; } /* Warna lalai */
     body { background-color: #f4f6f8; padding-bottom: 50px; }
-    .admin-header { background-color: #004A98; color: white; padding: 20px 0; margin-bottom: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .admin-header { background-color: var(--primary-color); color: white; padding: 20px 0; margin-bottom: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color 0.3s; }
     .container { max-width: 95% !important; }
     .admin-card { max-width: 100%; margin: 0 auto; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-radius: 10px; background: #fff; }
-    .nav-tabs .nav-link.active { font-weight: bold; color: #004A98; border-bottom: 3px solid #004A98; }
+    .nav-tabs .nav-link.active { font-weight: bold; color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
     .nav-tabs .nav-link { color: #6c757d; border: none; }
-    .table th { background-color: #f8f9fa; color: #004A98; }
+    .table th { background-color: #f8f9fa; color: var(--primary-color); }
   </style>
 </head>
 <body>
 
-  <!-- HEADER -->
+  
   <div class="admin-header">
     <div class="container d-flex justify-content-between align-items-center">
         <div>
             <h3 class="m-0 fw-bold header-title">EXACT Admin Portal</h3>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2">
+            <!-- COLOR PICKER TEMA -->
+            <input type="color" id="themeColorPicker" class="form-control form-control-color bg-transparent border-0" value="#004A98" title="Tukar Warna Tema" onchange="updateThemeColor()" style="width: 40px; height: 35px; padding: 0; cursor: pointer;">
+            
             <a href="#" id="btnLiveScreen" target="_blank" class="btn btn-info btn-sm fw-bold text-dark me-2">📺 Skrin EXACT (Live)</a>
             <button class="btn btn-danger btn-sm fw-bold" onclick="logout()">Log Keluar</button>
         </div>
@@ -64,7 +68,7 @@
             </form>
             <div id="uploadResult" class="mt-3 text-center fw-bold"></div>
         </div>
-
+<!-- HEADER -->
         <!-- TAB 2: URUS SEMESTER -->
         <div class="tab-pane fade" id="semester" role="tabpanel">
             <form id="semesterForm">
@@ -253,6 +257,26 @@
         window.location.replace('admin-login.html');
     }
 
+    // --- FUNGSI WARNA TEMA ---
+    function updateThemeColor() {
+        const newColor = document.getElementById('themeColorPicker').value;
+        document.documentElement.style.setProperty('--primary-color', newColor);
+        
+        fetch('/api/admin/theme', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenant_id: MAIN_TENANT, theme_color: newColor })
+        });
+    }
+
+    // Tarik warna tema semasa bila portal dimuatkan
+    fetch(`/api/tenant-info/${MAIN_TENANT}`).then(r => r.json()).then(res => {
+        if(res.success && res.data.theme_color) {
+            document.documentElement.style.setProperty('--primary-color', res.data.theme_color);
+            document.getElementById('themeColorPicker').value = res.data.theme_color;
+        }
+    });
+    
     function filterTable(inputId, tbodyId) {
         const input = document.getElementById(inputId).value.toLowerCase();
         const rows = document.getElementById(tbodyId).getElementsByTagName('tr');

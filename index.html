@@ -440,10 +440,25 @@
     }
 
     window.addEventListener('load', () => {
-        const uniLabel = document.getElementById('headerUniName');
-        if(uniLabel && UNI_NAME) {
-            uniLabel.innerText = UNI_NAME;
-        }
+        // Tarik Nama Universiti & Warna Tema dari Pelayan
+        fetch(`/api/tenant-info/${TENANT_ID}`)
+        .then(res => res.json())
+        .then(res => {
+            if(res.success) {
+                // Kemas kini nama universiti pada Header
+                const uniLabel = document.getElementById('headerUniName');
+                if(uniLabel) {
+                    uniLabel.innerText = res.data.tenant_name || UNI_NAME || 'Examination Attendance';
+                }
+                
+                // Tukar warna tema secara magik!
+                if(res.data.theme_color) {
+                    document.documentElement.style.setProperty('--brand-blue', res.data.theme_color);
+                    document.documentElement.style.setProperty('--brand-navy', res.data.theme_color);
+                }
+            }
+        })
+        .catch(err => console.error("Gagal menarik info universiti:", err));
     });
 
     // ==========================================
