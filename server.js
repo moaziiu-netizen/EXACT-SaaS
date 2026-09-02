@@ -1074,13 +1074,14 @@ app.put('/api/superadmin/ticket/:id', async (req, res) => {
 });
 
 // =====================================================
-// API 31: Baca Info Universiti & Warna Tema (Untuk Skrin Live)
+// API 31: Baca Info Universiti & Tema Penuh (Untuk Skrin Live)
 // =====================================================
 app.get('/api/tenant-info/:id', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('tenants')
-            .select('tenant_name, theme_color')
+            // Kita tarik semua lajur penjenamaan baharu
+            .select('tenant_name, theme_color, logo_url, theme_mode, color_header, color_button, color_text')
             .eq('id', req.params.id)
             .single();
 
@@ -1092,22 +1093,65 @@ app.get('/api/tenant-info/:id', async (req, res) => {
 });
 
 // =====================================================
-// API 32: Kemas Kini Warna Tema (Dari Portal Admin)
+// API 32: Kemas Kini Mod Tema Lanjutan (Dari Portal Admin)
 // =====================================================
-app.put('/api/admin/theme', async (req, res) => {
+app.put('/api/admin/advanced-theme', async (req, res) => {
     try {
-        const { tenant_id, theme_color } = req.body;
+        const { tenant_id, theme_mode, color_header, color_button, color_text } = req.body;
         const { error } = await supabase
             .from('tenants')
-            .update({ theme_color })
+            .update({ theme_mode, color_header, color_button, color_text })
             .eq('id', tenant_id);
 
         if (error) throw error;
-        res.status(200).json({ success: true, message: 'Warna tema berjaya dikemas kini!' });
+        res.status(200).json({ success: true, message: 'Tetapan tema berjaya disimpan!' });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
+
+// =====================================================
+// API 33: Muat Naik Logo Universiti & Ekstrak Auto-URL
+// =====================================================
+app.post('/api/admin/upload-logo', upload.single('logo'), async (req, res) => {
+    try {
+        const tenant_id = req.body.tenant_id;
+        if (!req.file || !tenant_id) return res.status(400).json({ success: false, message: 'Sila pilih fail logo.' });
+
+        const fileExt = path.extname(req.file.originalname);
+        const fileName = `logo_${tenant_id}_${Date.now()}${fileExt}`;
+        const filePath = `${tenant_id}/${fileName}`;
+
+        // 1. Muat naik logo ke tong 'tenant_logos'
+        const { error: uploadError } = await supabase
+            .storage
+            .from('tenant_logos')
+            .upload(filePath, req.file.buffer, {
+                contentType: req.file.mimetype,
+                upsert: true
+            });
+
+        if (uploadError) throw uploadError;
+
+        // 2. Dapatkan pautan awam (Public URL)
+        const { data: publicUrlData } = supabase.storage.from('tenant_logos').getPublicUrl(filePath);
+        const logo_url = publicUrlData.publicUrl;
+
+        // 3. Simpan URL logo tersebut ke dalam jadual tenants
+        const { error: dbError } = await supabase
+            .from('tenants')
+            .update({ logo_url: logo_url })
+            .eq('id', tenant_id);
+
+        if (dbError) throw dbError;
+
+        res.status(200).json({ success: true, message: 'Logo berjaya dimuat naik!', logo_url });
+    } catch (err) {
+        console.error("Ralat Upload Logo:", err.message);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // Hidupkan Pelayan
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

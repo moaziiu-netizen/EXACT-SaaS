@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>EXACT - Admin Portal</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- SCRIPT COLOR THIEF UNTUK SEDUT WARNA LOGO -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+  
   <script>
     if (sessionStorage.getItem('adminToken') !== 'kunci-rahsia-exact-2026') {
         window.location.replace('admin-login.html');
@@ -23,16 +26,14 @@
 </head>
 <body>
 
-  
+  <!-- HEADER -->
   <div class="admin-header">
     <div class="container d-flex justify-content-between align-items-center">
         <div>
             <h3 class="m-0 fw-bold header-title">EXACT Admin Portal</h3>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <!-- COLOR PICKER TEMA -->
-            <input type="color" id="themeColorPicker" class="form-control form-control-color bg-transparent border-0" value="#004A98" title="Tukar Warna Tema" onchange="updateThemeColor()" style="width: 40px; height: 35px; padding: 0; cursor: pointer;">
-            
+            <!-- Butang Skrin Live & Log Keluar -->
             <a href="#" id="btnLiveScreen" target="_blank" class="btn btn-info btn-sm fw-bold text-dark me-2">📺 Skrin EXACT (Live)</a>
             <button class="btn btn-danger btn-sm fw-bold" onclick="logout()">Log Keluar</button>
         </div>
@@ -50,6 +51,8 @@
         <li class="nav-item" role="presentation"><button class="nav-link" id="schedule-tab" data-bs-toggle="tab" data-bs-target="#schedule" type="button" role="tab" onclick="loadSchedules()">4. Urus Jadual</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="qr-tab" data-bs-toggle="tab" data-bs-target="#qrcode" type="button" role="tab" onclick="generateQR()">5. Kod QR</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="support-tab" data-bs-toggle="tab" data-bs-target="#support" type="button" role="tab">6. Hubungi Kami</button></li>
+        <!-- TAB BARU: PENJENAMAAN -->
+        <li class="nav-item" role="presentation"><button class="nav-link" id="branding-tab" data-bs-toggle="tab" data-bs-target="#branding" type="button" role="tab" onclick="loadBranding()">7. Penjenamaan</button></li>
       </ul>
 
       <div class="tab-content" id="adminTabsContent">
@@ -68,7 +71,7 @@
             </form>
             <div id="uploadResult" class="mt-3 text-center fw-bold"></div>
         </div>
-<!-- HEADER -->
+
         <!-- TAB 2: URUS SEMESTER -->
         <div class="tab-pane fade" id="semester" role="tabpanel">
             <form id="semesterForm">
@@ -88,7 +91,7 @@
             <div id="semResult" class="mt-2 mb-4 text-center fw-bold"></div>
             <hr>
             <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
-                <h5 class="fw-bold m-0" style="color: #004A98;">Senarai Semester Berdaftar</h5>
+                <h5 class="fw-bold m-0" style="color: var(--primary-color);">Senarai Semester Berdaftar</h5>
                 <input type="text" id="searchSem" class="form-control form-control-sm w-auto" placeholder="🔍 Cari Semester..." onkeyup="filterTable('searchSem', 'semTableBody')">
             </div>
             <div class="table-responsive">
@@ -119,7 +122,7 @@
             <div id="confResult" class="mt-2 mb-4 text-center fw-bold"></div>
             <hr>
             <div class="d-flex justify-content-between align-items-center mt-4 mb-2">
-                <h5 class="fw-bold m-0" style="color: #004A98;">Senarai Lokasi & Sesi Berdaftar</h5>
+                <h5 class="fw-bold m-0" style="color: var(--primary-color);">Senarai Lokasi & Sesi Berdaftar</h5>
                 <input type="text" id="searchConf" class="form-control form-control-sm w-auto" placeholder="🔍 Cari Lokasi/Sesi..." onkeyup="filterTable('searchConf', 'confTableBody')">
             </div>
             <div class="table-responsive">
@@ -133,7 +136,7 @@
         <!-- TAB 4: URUS JADUAL PETUGAS -->
         <div class="tab-pane fade" id="schedule" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
-                <h5 class="fw-bold m-0" style="color: #004A98;">Pangkalan Data Jadual Petugas</h5>
+                <h5 class="fw-bold m-0" style="color: var(--primary-color);">Pangkalan Data Jadual Petugas</h5>
                 <input type="text" id="searchSchedule" class="form-control form-control-sm" style="width: 250px;" placeholder="🔍 Cari Nama / ID / Dewan..." onkeyup="filterTable('searchSchedule', 'scheduleTableBody')">
             </div>
             <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
@@ -151,9 +154,9 @@
         <!-- TAB 5: JANAAN KOD QR -->
         <div class="tab-pane fade" id="qrcode" role="tabpanel">
             <div class="text-center mt-4">
-                <h4 style="color: #004A98; font-weight: bold;">Pautan Akses Pengawas Peperiksaan</h4>
+                <h4 style="color: var(--primary-color); font-weight: bold;">Pautan Akses Pengawas Peperiksaan</h4>
                 <p class="text-muted">Ini adalah pautan unik khusus untuk Universiti anda. Sila sebarkan pautan ini atau cetak Kod QR di bawah untuk ditampal di dewan peperiksaan.</p>
-                <div class="card p-4 mx-auto mb-4" style="max-width: 500px; border: 2px dashed #004A98; background-color: #f8f9fa;">
+                <div class="card p-4 mx-auto mb-4" style="max-width: 500px; border: 2px dashed var(--primary-color); background-color: #f8f9fa;">
                     <div id="qrCanvas" class="d-flex justify-content-center mb-3"></div>
                     <label class="form-label fw-bold small text-start">Pautan URL (Sedia untuk disalin):</label>
                     <div class="input-group">
@@ -171,7 +174,7 @@
         <!-- TAB 6: HUBUNGI KAMI -->
         <div class="tab-pane fade" id="support" role="tabpanel">
             <div class="card p-4 mx-auto mt-4" style="max-width: 600px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                <h4 style="color: #004A98; font-weight: bold;" class="mb-3 text-center">Hubungi Super-Admin</h4>
+                <h4 style="color: var(--primary-color); font-weight: bold;" class="mb-3 text-center">Hubungi Super-Admin</h4>
                 <p class="text-muted text-center small mb-4">Ada masalah teknikal atau cadangan penambahbaikan? Hantarkan mesej anda di sini.</p>
                 
                 <form id="supportForm">
@@ -191,7 +194,6 @@
                         <label class="form-label fw-bold small">Mesej / Keterangan</label>
                         <textarea class="form-control" id="supportMessage" rows="5" placeholder="Terangkan masalah atau cadangan anda secara terperinci..." required></textarea>
                     </div>
-                    <!-- KOD BAHARU: BUTANG UPLOAD FAIL -->
                     <div class="mb-4">
                         <label class="form-label fw-bold small">Lampiran / Screenshot (Pilihan)</label>
                         <input class="form-control" type="file" id="supportAttachment" accept="image/*,.pdf,.doc,.docx">
@@ -201,6 +203,74 @@
                     <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnSubmitSupport">Hantar Mesej</button>
                     <div id="supportResult" class="mt-3 text-center fw-bold small"></div>
                 </form>
+            </div>
+        </div>
+
+        <!-- TAB 7: PENJENAMAAN (BARU) -->
+        <div class="tab-pane fade" id="branding" role="tabpanel">
+            <h4 class="fw-bold mb-4" style="color: var(--primary-color);">Penjenamaan Universiti (White-labeling)</h4>
+            <div class="row">
+                <!-- Kiri: Muat Naik Logo & Auto-Color -->
+                <div class="col-md-5 mb-4">
+                    <div class="card p-4 h-100 shadow-sm border-0">
+                        <h6 class="fw-bold mb-3">1. Logo Universiti</h6>
+                        <div class="text-center mb-3 bg-light rounded p-3 border border-dashed">
+                            <img id="logoPreview" src="https://via.placeholder.com/250x100?text=Sila+Muat+Naik+Logo" alt="Logo" crossorigin="anonymous" style="max-height: 100px; max-width: 100%; object-fit: contain;">
+                        </div>
+                        <form id="logoUploadForm">
+                            <input type="file" id="logoInput" class="form-control form-control-sm mb-2" accept="image/png, image/jpeg, image/webp" required>
+                            <button type="submit" class="btn btn-primary btn-sm w-100 fw-bold" id="btnUploadLogo">Muat Naik Logo</button>
+                        </form>
+                        <div id="logoResult" class="mt-2 text-center small fw-bold"></div>
+                        
+                        <!-- Color Thief Palette -->
+                        <div id="extractedColorsBox" class="mt-4 d-none">
+                            <h6 class="fw-bold small text-muted text-center">Magis 🪄: Pilihan Warna Dari Logo</h6>
+                            <div class="d-flex justify-content-center gap-2" id="colorPalette"></div>
+                            <div class="text-center"><small class="text-muted" style="font-size:0.75rem;">Klik pada bebola warna untuk menerapkannya terus.</small></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kanan: Tetapan Tema -->
+                <div class="col-md-7 mb-4">
+                    <div class="card p-4 h-100 shadow-sm border-0">
+                        <h6 class="fw-bold mb-3">2. Mod Tema EXACT</h6>
+                        <form id="themeForm">
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">Pilih Mod Keseluruhan</label>
+                                <select id="themeMode" class="form-select" onchange="toggleCustomColors()">
+                                    <option value="Default">Lalai (Biru Asal EXACT)</option>
+                                    <option value="Dark">Gelap (Dark Mode)</option>
+                                    <option value="Warm">Suam (Warm Color Mode)</option>
+                                    <option value="Vivid">Ceria (Vivid Mode)</option>
+                                    <option value="Custom">Khas (Custom Settings)</option>
+                                </select>
+                            </div>
+
+                            <!-- Bahagian Tetapan Custom -->
+                            <div id="customColorsBox" class="p-3 bg-light rounded border mb-3" style="opacity: 0.4; pointer-events: none; transition: 0.3s;">
+                                <div class="row">
+                                    <div class="col-4 text-center">
+                                        <label class="form-label small fw-bold d-block">Header</label>
+                                        <input type="color" id="colHeader" class="form-control form-control-color mx-auto" value="#004A98">
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <label class="form-label small fw-bold d-block">Button</label>
+                                        <input type="color" id="colButton" class="form-control form-control-color mx-auto" value="#00A5A5">
+                                    </div>
+                                    <div class="col-4 text-center">
+                                        <label class="form-label small fw-bold d-block">Text</label>
+                                        <input type="color" id="colText" class="form-control form-control-color mx-auto" value="#333333">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-success btn-sm w-100 fw-bold" id="btnSaveTheme">Simpan Tetapan Tema</button>
+                            <div id="themeResult" class="mt-2 text-center small fw-bold"></div>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -250,6 +320,9 @@
         if (uniName) document.querySelector('.header-title').innerHTML = `EXACT Admin Portal <br><span style="font-size:0.9rem; font-weight:normal;">${uniName}</span>`;
         editScheduleModal = new bootstrap.Modal(document.getElementById('editScheduleModal'));
         if(MAIN_TENANT) document.getElementById('btnLiveScreen').href = `index.html?tenant=${MAIN_TENANT}&uni=${encodeURIComponent(uniName)}`;
+        
+        // Memuatkan tema admin pada permulaan
+        loadBranding();
     });
 
     function logout() {
@@ -257,26 +330,6 @@
         window.location.replace('admin-login.html');
     }
 
-    // --- FUNGSI WARNA TEMA ---
-    function updateThemeColor() {
-        const newColor = document.getElementById('themeColorPicker').value;
-        document.documentElement.style.setProperty('--primary-color', newColor);
-        
-        fetch('/api/admin/theme', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tenant_id: MAIN_TENANT, theme_color: newColor })
-        });
-    }
-
-    // Tarik warna tema semasa bila portal dimuatkan
-    fetch(`/api/tenant-info/${MAIN_TENANT}`).then(r => r.json()).then(res => {
-        if(res.success && res.data.theme_color) {
-            document.documentElement.style.setProperty('--primary-color', res.data.theme_color);
-            document.getElementById('themeColorPicker').value = res.data.theme_color;
-        }
-    });
-    
     function filterTable(inputId, tbodyId) {
         const input = document.getElementById(inputId).value.toLowerCase();
         const rows = document.getElementById(tbodyId).getElementsByTagName('tr');
@@ -437,7 +490,6 @@
 
             const uniName = sessionStorage.getItem('uniName') || 'Universiti Tidak Diketahui';
 
-            // Kita gunakan FormData untuk membolehkan fail dihantar bersama teks
             const formData = new FormData();
             formData.append('tenant_id', MAIN_TENANT);
             formData.append('tenant_name', uniName);
@@ -454,7 +506,7 @@
 
             fetch('/api/admin/support', {
                 method: 'POST',
-                body: formData // Tidak perlukan 'Content-Type', FormData uruskan segalanya!
+                body: formData 
             })
             .then(res => res.json())
             .then(data => {
@@ -474,6 +526,126 @@
             });
         });
     }
+
+    // ==========================================
+    // FUNGSI TAB 7: PENJENAMAAN (BRANDING)
+    // ==========================================
+    const colorThief = new ColorThief();
+    const logoImg = document.getElementById('logoPreview');
+
+    function loadBranding() {
+        fetch(`/api/tenant-info/${MAIN_TENANT}`).then(r => r.json()).then(res => {
+            if(res.success && res.data) {
+                if(res.data.logo_url) logoImg.src = res.data.logo_url + '?t=' + new Date().getTime(); // Elak cache
+                document.getElementById('themeMode').value = res.data.theme_mode || 'Default';
+                if(res.data.color_header) document.getElementById('colHeader').value = res.data.color_header;
+                if(res.data.color_button) document.getElementById('colButton').value = res.data.color_button;
+                if(res.data.color_text) document.getElementById('colText').value = res.data.color_text;
+                
+                // Gunakan Custom Header pada Portal Admin
+                if (res.data.theme_mode === 'Custom' && res.data.color_header) {
+                    document.documentElement.style.setProperty('--primary-color', res.data.color_header);
+                } else if (res.data.theme_mode === 'Default') {
+                    document.documentElement.style.setProperty('--primary-color', '#004A98');
+                }
+                toggleCustomColors();
+            }
+        });
+    }
+
+    // Ekstrak warna selepas gambar siap dimuatkan
+    logoImg.addEventListener('load', function() {
+        if (logoImg.src.includes('placeholder')) return;
+        try {
+            const palette = colorThief.getPalette(logoImg, 5);
+            const paletteBox = document.getElementById('colorPalette');
+            paletteBox.innerHTML = '';
+            if (palette) {
+                document.getElementById('extractedColorsBox').classList.remove('d-none');
+                palette.forEach(rgb => {
+                    const hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
+                    paletteBox.insertAdjacentHTML('beforeend', `<div style="width: 32px; height: 32px; background-color: ${hex}; border-radius: 50%; cursor: pointer; border: 2px solid #ddd; transition: transform 0.2s;" onclick="applySuggestedColor('${hex}')" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'"></div>`);
+                });
+            }
+        } catch(e) { console.log("Imej cross-origin belum diproses sepenuhnya."); }
+    });
+
+    function rgbToHex(r, g, b) {
+        return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1).toUpperCase();
+    }
+
+    function applySuggestedColor(hex) {
+        document.getElementById('themeMode').value = 'Custom';
+        toggleCustomColors();
+        document.getElementById('colHeader').value = hex;
+        document.documentElement.style.setProperty('--primary-color', hex); // Preview pada admin
+    }
+
+    function toggleCustomColors() {
+        const mode = document.getElementById('themeMode').value;
+        const box = document.getElementById('customColorsBox');
+        if(mode === 'Custom') {
+            box.style.opacity = '1'; box.style.pointerEvents = 'auto';
+        } else {
+            box.style.opacity = '0.4'; box.style.pointerEvents = 'none';
+        }
+    }
+
+    // Hantar Gambar (Muat Naik Logo)
+    document.getElementById('logoUploadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('logoInput');
+        if(fileInput.files.length === 0) return;
+        
+        const btn = document.getElementById('btnUploadLogo');
+        const resDiv = document.getElementById('logoResult');
+        const formData = new FormData();
+        formData.append('logo', fileInput.files[0]);
+        formData.append('tenant_id', MAIN_TENANT);
+        
+        btn.disabled = true; btn.textContent = 'Memuat Naik...'; resDiv.innerHTML = '';
+        
+        fetch('/api/admin/upload-logo', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false; btn.textContent = 'Muat Naik Logo';
+            if(data.success) {
+                resDiv.innerHTML = `<span class="text-success">✅ Selesai!</span>`;
+                logoImg.src = data.logo_url + '?t=' + new Date().getTime();
+            } else { resDiv.innerHTML = `<span class="text-danger">❌ ${data.message}</span>`; }
+        }).catch(err => { btn.disabled = false; btn.textContent = 'Muat Naik Logo'; resDiv.innerHTML = `<span class="text-danger">❌ Gagal berhubung.</span>`; });
+    });
+
+    // Simpan Tema
+    document.getElementById('themeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSaveTheme');
+        const resDiv = document.getElementById('themeResult');
+        const mode = document.getElementById('themeMode').value;
+        
+        const payload = {
+            tenant_id: MAIN_TENANT,
+            theme_mode: mode,
+            color_header: document.getElementById('colHeader').value,
+            color_button: document.getElementById('colButton').value,
+            color_text: document.getElementById('colText').value
+        };
+
+        btn.disabled = true; btn.textContent = 'Menyimpan...'; resDiv.innerHTML = '';
+        
+        fetch('/api/admin/advanced-theme', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(r => r.json()).then(data => {
+            btn.disabled = false; btn.textContent = 'Simpan Tetapan Tema';
+            if(data.success) {
+                resDiv.innerHTML = `<span class="text-success">✅ Berjaya disimpan!</span>`;
+                if(mode === 'Custom') document.documentElement.style.setProperty('--primary-color', payload.color_header);
+                else if (mode === 'Default') document.documentElement.style.setProperty('--primary-color', '#004A98');
+            } else { resDiv.innerHTML = `<span class="text-danger">❌ ${data.message}</span>`; }
+        });
+    });
   </script>
 </body>
 </html>
