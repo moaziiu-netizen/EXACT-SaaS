@@ -798,12 +798,14 @@ app.post('/api/admin/semester', async (req, res) => {
 // =====================================================
 app.post('/api/admin/config', async (req, res) => {
     try {
-        const { tenant_id, campus, venue, exam_session, start_time } = req.body;
+        // Ditambah end_time
+        const { tenant_id, campus, venue, exam_session, start_time, end_time, passcode } = req.body;
         if (!tenant_id || !campus || !venue || !exam_session) {
             return res.status(400).json({ success: false, message: 'Maklumat kampus, dewan, dan sesi wajib diisi.' });
         }
 
-        const { error } = await supabase.from('config').insert([{ tenant_id, campus, venue, exam_session, start_time }]);
+        // Ditambah end_time dalam insert
+        const { error } = await supabase.from('config').insert([{ tenant_id, campus, venue, exam_session, start_time, end_time, passcode }]);
         if (error) throw error;
 
         res.status(200).json({ success: true, message: 'Tetapan lokasi/sesi berjaya ditambah!' });
@@ -856,32 +858,17 @@ app.put('/api/admin/semester/:id', async (req, res) => {
 });
 
 // =====================================================
-// API 22: Tambah Lokasi & Sesi Baru (+ Passcode)
-// =====================================================
-app.post('/api/admin/config', async (req, res) => {
-    try {
-        const { tenant_id, campus, venue, exam_session, start_time, passcode } = req.body;
-        const { data, error } = await supabase
-            .from('config') // <--- DIBETULKAN
-            .insert([{ tenant_id, campus, venue, exam_session, start_time, passcode }]);
-        
-        if (error) throw error;
-        res.status(201).json({ success: true, message: 'Lokasi & Sesi berjaya ditambah.', data });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-// =====================================================
-// API 23: Kemas Kini Lokasi & Sesi (+ Passcode)
+// API 23: Kemas Kini Lokasi & Sesi (+ Passcode & Waktu Tamat)
 // =====================================================
 app.put('/api/admin/config/:id', async (req, res) => {
     try {
         const configId = req.params.id;
-        const { campus, venue, exam_session, start_time, passcode } = req.body;
+        // Ditambah end_time
+        const { campus, venue, exam_session, start_time, end_time, passcode } = req.body;
         const { data, error } = await supabase
-            .from('config') // <--- DIBETULKAN
-            .update({ campus, venue, exam_session, start_time, passcode })
+            .from('config') 
+            // Ditambah end_time dalam update
+            .update({ campus, venue, exam_session, start_time, end_time, passcode })
             .eq('id', configId);
 
         if (error) throw error;

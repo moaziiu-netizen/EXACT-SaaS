@@ -111,9 +111,10 @@
                   <div class="col-md-6"><label class="form-label fw-bold">Nama Dewan (Venue)</label><input type="text" id="confVenue" class="form-control" placeholder="Contoh: BAP (P)" required></div>
               </div>
               <div class="row mb-4">
-                  <div class="col-md-4"><label class="form-label fw-bold">Nama Sesi Peperiksaan</label><input type="text" id="confSession" class="form-control" placeholder="Contoh: Morning" required></div>
-                  <div class="col-md-4"><label class="form-label fw-bold">Waktu Mula Sesi</label><input type="time" id="confTime" class="form-control"></div>
-                  <div class="col-md-4"><label class="form-label fw-bold">Passcode (Opsyenal)</label><input type="text" id="confPasscode" class="form-control" placeholder="Cth: 1234" maxlength="6"></div>
+                  <div class="col-md-3"><label class="form-label fw-bold">Nama Sesi Peperiksaan</label><input type="text" id="confSession" class="form-control" placeholder="Contoh: Morning" required></div>
+                  <div class="col-md-3"><label class="form-label fw-bold">Waktu Mula</label><input type="time" id="confTime" class="form-control"></div>
+                  <div class="col-md-3"><label class="form-label fw-bold">Waktu Tamat</label><input type="time" id="confEndTime" class="form-control"></div>
+                  <div class="col-md-3"><label class="form-label fw-bold">Passcode</label><input type="text" id="confPasscode" class="form-control" placeholder="Cth: 1234" maxlength="6"></div>
               </div>
               <div class="d-flex gap-2">
                 <button type="submit" class="btn btn-warning text-dark flex-grow-1 fw-bold" id="btnConf">Simpan Lokasi/Sesi</button>
@@ -128,8 +129,8 @@
             </div>
             <div class="table-responsive">
               <table class="table table-sm table-bordered align-middle mt-2">
-                <thead><tr><th>Kampus</th><th>Dewan (Venue)</th><th>Sesi</th><th>Waktu Mula</th><th>Passcode</th><th class="text-center" style="width: 180px;">Tindakan</th></tr></thead>
-                <tbody id="confTableBody"><tr><td colspan="6" class="text-center text-muted">Sila tunggu...</td></tr></tbody>
+                <thead><tr><th>Kampus</th><th>Dewan (Venue)</th><th>Sesi</th><th>Waktu Mula</th><th>Waktu Tamat</th><th>Passcode</th><th class="text-center" style="width: 180px;">Tindakan</th></tr></thead>
+                <tbody id="confTableBody"><tr><td colspan="7" class="text-center text-muted">Sila tunggu...</td></tr></tbody>
               </table>
             </div>
         </div>
@@ -431,14 +432,14 @@
 
     // --- TAB 3 ---
     function loadConfigs() {
-        const tbody = document.getElementById('confTableBody'); tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Memuatkan...</td></tr>';
+        const tbody = document.getElementById('confTableBody'); tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Memuatkan...</td></tr>';
         fetch(`/api/admin/configs/${MAIN_TENANT}`).then(res => res.json()).then(res => {
-            if(!res.success || res.data.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Tiada rekod.</td></tr>'; return; }
-            tbody.innerHTML = res.data.map(c => `<tr><td>${c.campus}</td><td>${c.venue}</td><td>${c.exam_session}</td><td>${c.start_time || '-'}</td><td>${c.passcode ? `<span class="badge bg-success">${c.passcode}</span>` : '<span class="text-muted small">Tiada</span>'}</td><td class="text-center"><button class="btn btn-sm btn-outline-primary me-1" onclick="triggerEditConf('${c.id}', '${escapeHtml(c.campus)}', '${escapeHtml(c.venue)}', '${escapeHtml(c.exam_session)}', '${c.start_time || ''}', '${escapeHtml(c.passcode || '')}')">✏️ Edit</button><button class="btn btn-sm btn-outline-danger" onclick="deleteConfig('${c.id}')">🗑️ Padam</button></td></tr>`).join('');
+            if(!res.success || res.data.length === 0) { tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Tiada rekod.</td></tr>'; return; }
+            tbody.innerHTML = res.data.map(c => `<tr><td>${c.campus}</td><td>${c.venue}</td><td>${c.exam_session}</td><td>${c.start_time || '-'}</td><td>${c.end_time || '-'}</td><td>${c.passcode ? `<span class="badge bg-success">${c.passcode}</span>` : '<span class="text-muted small">Tiada</span>'}</td><td class="text-center"><button class="btn btn-sm btn-outline-primary me-1" onclick="triggerEditConf('${c.id}', '${escapeHtml(c.campus)}', '${escapeHtml(c.venue)}', '${escapeHtml(c.exam_session)}', '${c.start_time || ''}', '${c.end_time || ''}', '${escapeHtml(c.passcode || '')}')">✏️ Edit</button><button class="btn btn-sm btn-outline-danger" onclick="deleteConfig('${c.id}')">🗑️ Padam</button></td></tr>`).join('');
         });
     }
-    function triggerEditConf(id, campus, venue, session, time, passcode) {
-        editingConfId = id; document.getElementById('confCampus').value = campus; document.getElementById('confVenue').value = venue; document.getElementById('confSession').value = session; document.getElementById('confTime').value = time; document.getElementById('confPasscode').value = passcode;
+    function triggerEditConf(id, campus, venue, session, time, end_time, passcode) {
+        editingConfId = id; document.getElementById('confCampus').value = campus; document.getElementById('confVenue').value = venue; document.getElementById('confSession').value = session; document.getElementById('confTime').value = time; document.getElementById('confEndTime').value = end_time; document.getElementById('confPasscode').value = passcode;
         document.getElementById('btnConf').textContent = 'Kemas Kini'; document.getElementById('btnConf').classList.replace('btn-warning', 'btn-primary'); document.getElementById('btnConf').classList.remove('text-dark'); document.getElementById('btnCancelConf').classList.remove('d-none'); window.scrollTo(0, 0); 
     }
     function cancelEditConf() {
@@ -446,13 +447,13 @@
     }
     document.getElementById('configForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      const payload = { tenant_id: MAIN_TENANT, campus: document.getElementById('confCampus').value, venue: document.getElementById('confVenue').value, exam_session: document.getElementById('confSession').value, start_time: document.getElementById('confTime').value || null, passcode: document.getElementById('confPasscode').value || null };
+      const payload = { tenant_id: MAIN_TENANT, campus: document.getElementById('confCampus').value, venue: document.getElementById('confVenue').value, exam_session: document.getElementById('confSession').value, start_time: document.getElementById('confTime').value || null, end_time: document.getElementById('confEndTime').value || null, passcode: document.getElementById('confPasscode').value || null };
       const btn = document.getElementById('btnConf'), url = editingConfId ? `/api/admin/config/${editingConfId}` : '/api/admin/config', method = editingConfId ? 'PUT' : 'POST';
       btn.disabled = true; btn.textContent = 'Menyimpan...'; 
       fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(res => res.json()).then(data => { cancelEditConf(); btn.disabled = false; loadConfigs(); });
     });
     function deleteConfig(id) { if(!confirm("Padam lokasi ini?")) return; fetch(`/api/admin/config/${id}`, { method: 'DELETE' }).then(res => res.json()).then(() => loadConfigs()); }
-
+    
     // --- TAB 4 ---
     function loadSchedules() {
         const tbody = document.getElementById('scheduleTableBody'); tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Memuatkan...</td></tr>';
