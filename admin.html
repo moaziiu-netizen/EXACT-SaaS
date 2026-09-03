@@ -240,10 +240,8 @@
                             <div class="mb-3">
                                 <label class="form-label small fw-bold">Pilih Mod Keseluruhan</label>
                                 <select id="themeMode" class="form-select" onchange="toggleCustomColors()">
-                                    <option value="Default">Lalai (Biru Asal EXACT)</option>
+                                    <option value="Default">Default (Biru Asal EXACT)</option>
                                     <option value="Dark">Gelap (Dark Mode)</option>
-                                    <option value="Warm">Suam (Warm Color Mode)</option>
-                                    <option value="Vivid">Ceria (Vivid Mode)</option>
                                     <option value="Custom">Khas (Custom Settings)</option>
                                 </select>
                             </div>
@@ -254,6 +252,16 @@
                                     <div class="col-4 text-center">
                                         <label class="form-label small fw-bold d-block">Header</label>
                                         <input type="color" id="colHeader" class="form-control form-control-color mx-auto" value="#004A98">
+                                        
+                                        <!-- Checkbox Gradient -->
+                                        <div class="mt-2 text-center">
+                                            <div class="form-check form-switch d-inline-block">
+                                                <input class="form-check-input" type="checkbox" id="useGradient" onchange="toggleGradient()">
+                                                <label class="form-check-label small" style="font-size: 0.75rem; margin-top:2px;">Gradient</label>
+                                            </div>
+                                        </div>
+                                        <!-- Color Picker Ke-2 (Disembunyikan jika bukan gradient) -->
+                                        <input type="color" id="colHeader2" class="form-control form-control-color mx-auto mt-1 d-none" value="#00A5A5">
                                     </div>
                                     <div class="col-4 text-center">
                                         <label class="form-label small fw-bold d-block">Button</label>
@@ -541,22 +549,98 @@
     function loadBranding() {
         fetch(`/api/tenant-info/${MAIN_TENANT}`).then(r => r.json()).then(res => {
             if(res.success && res.data) {
-                if(res.data.logo_url) logoImg.src = res.data.logo_url + '?t=' + new Date().getTime(); // Elak cache
+                if(res.data.logo_url) logoImg.src = res.data.logo_url + '?t=' + new Date().getTime(); 
                 document.getElementById('themeMode').value = res.data.theme_mode || 'Default';
-                if(res.data.color_header) document.getElementById('colHeader').value = res.data.color_header;
+                
+                // Logik Asingkan Warna Gradient (Koma)
+                if(res.data.color_header) {
+                    const parts = res.data.color_header.split(',');
+                    document.getElementById('colHeader').value = parts[0];
+                    if(parts.length > 1) {
+                        document.getElementById('useGradient').checked = true;
+                        document.getElementById('colHeader2').value = parts[1];
+                        document.getElementById('colHeader2').classList.remove('d-none');
+                    } else {
+                        document.getElementById('useGradient').checked = false;
+                        document.getElementById('colHeader2').classList.add('d-none');
+                    }
+                }
                 if(res.data.color_button) document.getElementById('colButton').value = res.data.color_button;
                 if(res.data.color_text) document.getElementById('colText').value = res.data.color_text;
                 
-                // Gunakan Custom Header pada Portal Admin
-                if (res.data.theme_mode === 'Custom' && res.data.color_header) {
-                    document.documentElement.style.setProperty('--primary-color', res.data.color_header);
-                } else if (res.data.theme_mode === 'Default') {
-                    document.documentElement.style.setProperty('--primary-color', '#004A98');
-                }
+                applyAdminPreview(res.data.theme_mode, res.data.color_header);
                 toggleCustomColors();
             }
         });
     }
+
+    function applyAdminPreview(mode, headerColorRaw) {
+        const headerEl = document.querySelector('.admin-header');
+        if (mode === 'Custom' && headerColorRaw) {
+            const parts = headerColorRaw.split(',');
+            document.documentElement.style.setProperty('--primary-color', parts[0]);
+            if (parts.length > 1) {
+                headerEl.style.background = `linear-gradient(90deg, ${parts[0]}, ${parts[1]})`;
+            } else {
+                headerEl.style.background = parts[0];
+            }
+        } else if (mode === 'Default') {
+            document.documentElement.style.setProperty('--primary-color', '#004A98');
+            headerEl.style.background = 'var(--primary-color)';
+        }
+    }
+
+    function toggleGradient() {
+        if(document.getElementById('useGradient').checked) {
+            document.getElementById('colHeader2').classList.remove('d-none');
+        } else {
+            document.getElementById('colHeader2').classList.add('d-none');
+        }
+    }
+
+    function applySuggestedColor(hex) {
+        document.getElementById('themeMode').value = 'Custom';
+        toggleCustomColors();
+        document.getElementById('colHeader').value = hex;
+        document.getElementById('useGradient').checked = false;
+        document.getElementById('colHeader2').classList.add('d-none');
+        applyAdminPreview('Custom', hex);
+    }
+
+    // Simpan Tema (Boleh simpan 2 warna jika gradient ditekan)
+    document.getElementById('themeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btnSaveTheme');
+        const resDiv = document.getElementById('themeResult');
+        const mode = document.getElementById('themeMode').value;
+        
+        let headerVal = document.getElementById('colHeader').value;
+        if(document.getElementById('useGradient').checked) {
+            headerVal += ',' + document.getElementById('colHeader2').value;
+        }
+
+        const payload = {
+            tenant_id: MAIN_TENANT,
+            theme_mode: mode,
+            color_header: headerVal,
+            color_button: document.getElementById('colButton').value,
+            color_text: document.getElementById('colText').value
+        };
+
+        btn.disabled = true; btn.textContent = 'Menyimpan...'; resDiv.innerHTML = '';
+        
+        fetch('/api/admin/advanced-theme', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(r => r.json()).then(data => {
+            btn.disabled = false; btn.textContent = 'Simpan Tetapan Tema';
+            if(data.success) {
+                resDiv.innerHTML = `<span class="text-success">✅ Berjaya disimpan!</span>`;
+                applyAdminPreview(mode, headerVal);
+            } else { resDiv.innerHTML = `<span class="text-danger">❌ ${data.message}</span>`; }
+        });
+    });
 
     // Ekstrak warna selepas gambar siap dimuatkan
     logoImg.addEventListener('load', function() {

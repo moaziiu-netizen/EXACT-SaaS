@@ -472,28 +472,25 @@
                 const mode = res.data.theme_mode || 'Default';
                 const root = document.documentElement;
 
+                // Terapkan Mod Tema
+                const mode = res.data.theme_mode || 'Default';
+                const root = document.documentElement;
+
                 if (mode === 'Custom') {
                     if(res.data.color_header) {
-                        root.style.setProperty('--brand-blue', res.data.color_header);
-                        document.querySelector('.brand-bar').style.background = res.data.color_header; 
+                        const parts = res.data.color_header.split(',');
+                        root.style.setProperty('--brand-blue', parts[0]);
+                        if (parts.length > 1) {
+                            document.querySelector('.brand-bar').style.background = `linear-gradient(90deg, ${parts[0]}, ${parts[1]})`;
+                        } else {
+                            document.querySelector('.brand-bar').style.background = parts[0];
+                        }
                     }
                     if(res.data.color_button) root.style.setProperty('--brand-teal', res.data.color_button);
                     if(res.data.color_text) {
                         root.style.setProperty('--brand-navy', res.data.color_text);
                         document.body.style.color = res.data.color_text;
                     }
-                
-                } else if (mode === 'Warm') {
-                    root.style.setProperty('--brand-blue', '#D35400');
-                    root.style.setProperty('--brand-teal', '#E67E22');
-                    root.style.setProperty('--brand-navy', '#A04000');
-                    document.querySelector('.brand-bar').style.background = 'linear-gradient(90deg, #D35400, #E67E22)';
-                
-                } else if (mode === 'Vivid') {
-                    root.style.setProperty('--brand-blue', '#8E44AD');
-                    root.style.setProperty('--brand-teal', '#2980B9');
-                    root.style.setProperty('--brand-navy', '#2C3E50');
-                    document.querySelector('.brand-bar').style.background = 'linear-gradient(90deg, #8E44AD, #2980B9)';
                 
                 } else if (mode === 'Dark') {
                     root.style.setProperty('--brand-gray', '#1e1e1e');
@@ -515,7 +512,6 @@
                         el.style.borderColor = '#555';
                     });
                 }
-            }
         })
         .catch(err => console.error("Gagal menarik info penjenamaan:", err));
     });
