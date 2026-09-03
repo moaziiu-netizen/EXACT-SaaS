@@ -130,7 +130,7 @@
           </div>
         </div>
 
-        <div class="tableWrap mt-4">
+        <div class="tableWrap mt-4 bg-white">
           <table class="table table-bordered table-sm align-middle mb-0" id="masterTable">
             <thead><tr id="masterHead"></tr></thead>
             <tbody id="masterBody"><tr><td class="text-center text-muted py-4">Please set the details and press the <strong>Filter / Search</strong> button to display the schedule.</td></tr></tbody>
@@ -478,7 +478,10 @@
                         document.querySelector('.brand-bar').style.background = res.data.color_header; 
                     }
                     if(res.data.color_button) root.style.setProperty('--brand-teal', res.data.color_button);
-                    if(res.data.color_text) document.body.style.color = res.data.color_text;
+                    if(res.data.color_text) {
+                        root.style.setProperty('--brand-navy', res.data.color_text);
+                        document.body.style.color = res.data.color_text;
+                    }
                 
                 } else if (mode === 'Warm') {
                     root.style.setProperty('--brand-blue', '#D35400');
