@@ -614,9 +614,13 @@
         const resDiv = document.getElementById('themeResult');
         const mode = document.getElementById('themeMode').value;
         
+        // LOGIK KUTIP WARNA GRADIENT
         let headerVal = document.getElementById('colHeader').value;
-        if(document.getElementById('useGradient').checked) {
-            headerVal += ',' + document.getElementById('colHeader2').value;
+        const gradientToggle = document.getElementById('useGradient');
+        const color2 = document.getElementById('colHeader2');
+        
+        if (gradientToggle && gradientToggle.checked && color2) {
+            headerVal += ',' + color2.value; // Gabungkan warna: "#Warna1,#Warna2"
         }
 
         const payload = {
