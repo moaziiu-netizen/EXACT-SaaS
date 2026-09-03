@@ -1152,6 +1152,24 @@ app.post('/api/admin/upload-logo', upload.single('logo'), async (req, res) => {
     }
 });
 
+// =====================================================
+// API 34: Tarik Senarai Aduan mengikut Tenant
+// =====================================================
+app.get('/api/admin/support/:tenant_id', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('support_tickets') // Pastikan nama jadual ini sama dengan jadual Supabase anda (cth: support_tickets / aduan)
+            .select('*')
+            .eq('tenant_id', req.params.tenant_id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.status(200).json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
 // Hidupkan Pelayan
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
