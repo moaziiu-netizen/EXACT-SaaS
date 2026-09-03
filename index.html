@@ -35,6 +35,8 @@
     .brand-title small { font-weight: 500; opacity: 0.9; }
 
     .nav-btn { min-width: 100px; font-weight: 600; border:2px solid var(--brand-yellow) !important; flex-grow: 1;}
+    
+    /* WARNA BUTANG DIKERASKAN (Kekal Walaupun Tema Bertukar) */
     #navHome       { background:#ffffff; color: #002C5F; }
     #navHome:hover, #navHome.active { box-shadow: 0 0 0 3px rgba(245,192,0,.25); }
     #navCheckin    { background: #004A98; color:#fff; }
@@ -76,7 +78,8 @@
 <body>
   <div class="wrap">
     <div class="brand-bar mb-3">
-      <!-- RUANG LOGO & NAMA UNIVERSITI -->
+      
+      <!-- RUANGAN LOGO & NAMA -->
       <div class="d-flex align-items-center gap-3">
         <img id="tenantLogo" src="" alt="Logo" class="d-none" style="height: 55px; max-width: 180px; object-fit: contain; background: white; padding: 4px; border-radius: 6px;">
         <div class="brand-title" onclick="route('home')" title="Go to Home">
@@ -427,9 +430,6 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 
   <script>
-    // ==========================================
-    // 1. PENGEKAM MULTI-TENANT & KESELAMATAN URL
-    // ==========================================
     const urlParams = new URLSearchParams(window.location.search);
     const TENANT_ID = urlParams.get('tenant');
     const UNI_NAME = urlParams.get('uni');
@@ -445,17 +445,17 @@
     }
 
     // ==========================================
-    // 2. ENJIN TEMA (WHITE-LABELING) - FASA 4
+    // ENJIN TEMA (WHITE-LABELING) - FASA 4
     // ==========================================
     window.addEventListener('load', () => {
         const uniLabel = document.getElementById('headerUniName');
         
-        // Letakkan nama serta merta (Elak delay)
+        // 1. Terapkan nama segera dari URL
         if(uniLabel && UNI_NAME) {
             uniLabel.innerText = UNI_NAME;
         }
 
-        // Tarik tema dari pangkalan data
+        // 2. Tarik tema dan logo dari database
         fetch(`/api/tenant-info/${TENANT_ID}`)
         .then(res => res.json())
         .then(res => {
@@ -468,11 +468,7 @@
                     logoImg.classList.remove('d-none');
                 }
 
-                // Terapkan Mod Tema
-                const mode = res.data.theme_mode || 'Default';
-                const root = document.documentElement;
-
-                // Terapkan Mod Tema
+                // Terapkan Mod Tema & Gradient
                 const mode = res.data.theme_mode || 'Default';
                 const root = document.documentElement;
 
@@ -491,7 +487,6 @@
                         root.style.setProperty('--brand-navy', res.data.color_text);
                         document.body.style.color = res.data.color_text;
                     }
-                
                 } else if (mode === 'Dark') {
                     root.style.setProperty('--brand-gray', '#1e1e1e');
                     root.style.setProperty('--brand-blue', '#333333');
@@ -512,12 +507,13 @@
                         el.style.borderColor = '#555';
                     });
                 }
+            }
         })
         .catch(err => console.error("Gagal menarik info penjenamaan:", err));
     });
 
     // ==========================================
-    // 3. FUNGSI SOKONGAN & UTILITI
+    // FUNGSI SOKONGAN & UTILITI
     // ==========================================
     function toIsoFromDisplay(ddmmyyyy){
       if(!ddmmyyyy) return '';
