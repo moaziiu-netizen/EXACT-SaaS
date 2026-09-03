@@ -23,7 +23,8 @@
     .card { box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.06); transition: all 0.3s ease; }
 
     .brand-bar {
-      background: linear-gradient(90deg, var(--brand-blue), var(--brand-teal));
+      /* Menggunakan CSS Variable baharu yang kebal ralat */
+      background: var(--header-bg, linear-gradient(90deg, var(--brand-blue), var(--brand-teal)));
       border-radius: 14px;
       padding: 10px 14px;
       color: #fff;
@@ -476,10 +477,12 @@
                     if(res.data.color_header) {
                         const parts = res.data.color_header.split(',');
                         root.style.setProperty('--brand-blue', parts[0]);
+                        
+                        // INI BAHAGIAN YANG DIBETULKAN (Guna --header-bg)
                         if (parts.length > 1) {
-                            document.querySelector('.brand-bar').style.background = `linear-gradient(90deg, ${parts[0]}, ${parts[1]})`;
+                            root.style.setProperty('--header-bg', `linear-gradient(90deg, ${parts[0]}, ${parts[1]})`);
                         } else {
-                            document.querySelector('.brand-bar').style.background = parts[0];
+                            root.style.setProperty('--header-bg', parts[0]);
                         }
                     }
                     if(res.data.color_button) root.style.setProperty('--brand-teal', res.data.color_button);
@@ -493,7 +496,9 @@
                     root.style.setProperty('--brand-teal', '#555555');
                     root.style.setProperty('--brand-navy', '#000000');
                     document.body.style.color = '#e0e0e0';
-                    document.querySelector('.brand-bar').style.background = '#000000';
+                    
+                    // INI JUGA DIBETULKAN UNTUK DARK MODE
+                    root.style.setProperty('--header-bg', '#000000');
                     
                     document.querySelectorAll('.card').forEach(c => {
                         c.style.backgroundColor = '#2c2c2c';
