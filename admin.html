@@ -50,9 +50,7 @@
         <li class="nav-item" role="presentation"><button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config" type="button" role="tab" onclick="loadConfigs()">3. Urus Lokasi & Sesi</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="schedule-tab" data-bs-toggle="tab" data-bs-target="#schedule" type="button" role="tab" onclick="loadSchedules()">4. Urus Jadual</button></li>
         <li class="nav-item" role="presentation"><button class="nav-link" id="qr-tab" data-bs-toggle="tab" data-bs-target="#qrcode" type="button" role="tab" onclick="generateQR()">5. Kod QR</button></li>
-        <!-- BUTANG HUBUNGI KAMI YG DIBETULKAN -->
         <li class="nav-item" role="presentation"><button class="nav-link" id="support-tab" data-bs-toggle="tab" data-bs-target="#support" type="button" role="tab" onclick="loadSupport()">6. Hubungi Kami</button></li>
-        <!-- TAB BARU: PENJENAMAAN -->
         <li class="nav-item" role="presentation"><button class="nav-link" id="branding-tab" data-bs-toggle="tab" data-bs-target="#branding" type="button" role="tab" onclick="loadBranding()">7. Penjenamaan</button></li>
       </ul>
 
@@ -140,7 +138,6 @@
             <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
                 <h5 class="fw-bold m-0" style="color: var(--primary-color);">Pangkalan Data Jadual Petugas</h5>
                 <div class="d-flex gap-2">
-                    <!-- BUTANG PADAM PILIHAN -->
                     <button class="btn btn-danger btn-sm fw-bold d-none shadow-sm" id="btnBulkDelete" onclick="deleteSelectedSchedules()">🗑️ Padam Pilihan (<span id="selCount">0</span>)</button>
                     <input type="text" id="searchSchedule" class="form-control form-control-sm" style="width: 250px;" placeholder="🔍 Cari Nama / ID / Dewan..." onkeyup="filterTable('searchSchedule', 'scheduleTableBody')">
                 </div>
@@ -159,7 +156,6 @@
                         <th class="text-center" style="width: 120px;">
                             <div class="d-flex justify-content-center align-items-center gap-1">
                                 Tindakan 
-                                <!-- KOTAK SELECT ALL -->
                                 <input type="checkbox" id="selectAllSchedule" class="form-check-input m-0" onchange="toggleAllSchedules(this)" title="Pilih Semua">
                             </div>
                         </th>
@@ -197,7 +193,6 @@
             <h4 class="fw-bold mb-4" style="color: var(--primary-color);">Pusat Bantuan & Maklumbalas</h4>
             
             <div class="row g-4">
-                
                 <!-- KAD KIRI: Borang Aduan -->
                 <div class="col-md-5">
                     <div class="card h-100" style="border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 6px 12px rgba(0,0,0,0.05); background-color: #fafbfc;">
@@ -261,11 +256,10 @@
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
 
-        <!-- TAB 7: PENJENAMAAN (BARU) -->
+        <!-- TAB 7: PENJENAMAAN -->
         <div class="tab-pane fade" id="branding" role="tabpanel">
             <h4 class="fw-bold mb-4" style="color: var(--primary-color);">Penjenamaan Universiti (White-labeling)</h4>
             <div class="row">
@@ -311,7 +305,6 @@
                                     <div class="col-4 text-center">
                                         <label class="form-label small fw-bold d-block">Header</label>
                                         <input type="color" id="colHeader" class="form-control form-control-color mx-auto" value="#004A98">
-                                        
                                         <!-- Checkbox Gradient -->
                                         <div class="mt-2 text-center">
                                             <div class="form-check form-switch d-inline-block">
@@ -319,7 +312,7 @@
                                                 <label class="form-check-label small" style="font-size: 0.75rem; margin-top:2px;">Gradient</label>
                                             </div>
                                         </div>
-                                        <!-- Color Picker Ke-2 (Disembunyikan jika bukan gradient) -->
+                                        <!-- Color Picker Ke-2 -->
                                         <input type="color" id="colHeader2" class="form-control form-control-color mx-auto mt-1 d-none" value="#00A5A5">
                                     </div>
                                     <div class="col-4 text-center">
@@ -478,7 +471,6 @@
     
     // --- TAB 4 ---
     
-    // FUNGSI YANG TERCICIR SEBELUM INI
     function populateDropdown(selectId, dataSet) {
         const select = document.getElementById(selectId); 
         if(!select) return;
@@ -487,7 +479,7 @@
     }
 
     let lastCheckedSchedule = null;
-    // Fungsi canggih: Shift + Click untuk Select pelbagai jadual
+    
     function handleScheduleCheck(e, checkbox) {
         const checkboxes = Array.from(document.querySelectorAll('.sched-checkbox:not(:disabled)'));
         if (e.shiftKey && lastCheckedSchedule !== null) {
@@ -500,7 +492,6 @@
         updateBulkDeleteBtn();
     }
 
-    // Fungsi butang Select All pada header jadual
     function toggleAllSchedules(source) {
         const checkboxes = document.querySelectorAll('.sched-checkbox:not(:disabled)');
         checkboxes.forEach(cb => {
@@ -511,7 +502,6 @@
         updateBulkDeleteBtn();
     }
 
-    // Mengira jumlah yg dipilih & papar butang Delete
     function updateBulkDeleteBtn() {
         const checkedCount = document.querySelectorAll('.sched-checkbox:checked').length;
         const btn = document.getElementById('btnBulkDelete');
@@ -526,7 +516,6 @@
         }
     }
 
-    // Panggil API 35 untuk memadam
     function deleteSelectedSchedules() {
         const checkedBoxes = document.querySelectorAll('.sched-checkbox:checked');
         if (checkedBoxes.length === 0) return;
@@ -548,7 +537,7 @@
             if(data.success) {
                 const chkAll = document.getElementById('selectAllSchedule');
                 if(chkAll) chkAll.checked = false;
-                loadSchedules(); // Segarkan semula jadual
+                loadSchedules(); 
             } else { alert("Ralat memadam rekod: " + data.message); }
         })
         .catch(err => {
@@ -575,7 +564,6 @@
             uniqueRoles.clear(); uniqueSessions.clear(); staffDirectory = {};
             let tableHTML = '';
             res.data.forEach(s => {
-                // Konversi data ke string untuk elak ralat jika ia berbentuk nombor
                 if(s.role) uniqueRoles.add(String(s.role).trim());
                 if(s.exam_session) uniqueSessions.add(String(s.exam_session).trim());
                 if(s.staff_id && s.staff_name) {
@@ -600,7 +588,6 @@
             });
             tbody.innerHTML = tableHTML; 
             
-            // Periksa jika elemen Modal ada sebelum populate data
             if(document.getElementById('editSchedRole')) populateDropdown('editSchedRole', uniqueRoles); 
             if(document.getElementById('editSchedSession')) populateDropdown('editSchedSession', uniqueSessions);
             
@@ -664,6 +651,20 @@
         });
     }
 
+    // --- FUNGSI AUTO-FILL NAMA & TELEFON PETUGAS ---
+    const elEditStaffId = document.getElementById('editSchedStaffId');
+    if(elEditStaffId) {
+        elEditStaffId.addEventListener('keyup', function() {
+            const typedId = this.value.trim();
+            if(staffDirectory[typedId]) { 
+                const nameField = document.getElementById('editSchedName');
+                const phoneField = document.getElementById('editSchedPhone');
+                if(nameField) nameField.value = staffDirectory[typedId].name; 
+                if(phoneField) phoneField.value = staffDirectory[typedId].phone || ''; 
+            }
+        });
+    }
+
     // --- TAB 5 ---
     let qrGenerated = false;
     function generateQR() {
@@ -687,43 +688,42 @@
     }
 
     // --- TAB 6: HUBUNGI KAMI ---
+    
+    // Fungsi Muat Turun Senarai Aduan DITARIK KELUAR
+    function loadSupport() {
+        const tbody = document.getElementById('supportTableBody');
+        if(!tbody) return;
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Memuatkan...</td></tr>';
+        
+        fetch(`/api/admin/support/${MAIN_TENANT}`)
+        .then(res => res.json())
+        .then(res => {
+            if(!res.success || !res.data || res.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Tiada rekod aduan buat masa ini.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = res.data.map(t => {
+                const date = new Date(t.created_at).toLocaleDateString('ms-MY');
+                let badge = '<span class="badge bg-secondary">Pending</span>'; // Default status
+                
+                if (t.status === 'In Progress') badge = '<span class="badge bg-warning text-dark">Diproses</span>';
+                if (t.status === 'Resolved') badge = '<span class="badge bg-success">Selesai</span>';
+
+                return `<tr>
+                    <td>${date}</td>
+                    <td><span class="badge bg-light text-dark border">${t.category || '-'}</span></td>
+                    <td><div style="max-height: 80px; overflow-y: auto; font-size: 0.85rem;">${escapeHtml(t.message || '-')}</div></td>
+                    <td class="text-center">${badge}</td>
+                </tr>`;
+            }).join('');
+        })
+        .catch(err => {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">Gagal menghubungi pelayan.</td></tr>';
+        });
+    }
+
     const supportFormEl = document.getElementById('supportForm');
     if (supportFormEl) {
-        
-        // Fungsi Muat Turun Senarai Aduan
-        function loadSupport() {
-            const tbody = document.getElementById('supportTableBody');
-            if(!tbody) return;
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Memuatkan...</td></tr>';
-            
-            fetch(`/api/admin/support/${MAIN_TENANT}`)
-            .then(res => res.json())
-            .then(res => {
-                if(!res.success || !res.data || res.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Tiada rekod aduan buat masa ini.</td></tr>';
-                    return;
-                }
-                tbody.innerHTML = res.data.map(t => {
-                    const date = new Date(t.created_at).toLocaleDateString('ms-MY');
-                    let badge = '<span class="badge bg-secondary">Pending</span>'; // Default status
-                    
-                    // Gayakan lencana status (Boleh diselaraskan ikut pangkalan data anda)
-                    if (t.status === 'In Progress') badge = '<span class="badge bg-warning text-dark">Diproses</span>';
-                    if (t.status === 'Resolved') badge = '<span class="badge bg-success">Selesai</span>';
-
-                    return `<tr>
-                        <td>${date}</td>
-                        <td><span class="badge bg-light text-dark border">${t.category || '-'}</span></td>
-                        <td><div style="max-height: 80px; overflow-y: auto; font-size: 0.85rem;">${escapeHtml(t.message || '-')}</div></td>
-                        <td class="text-center">${badge}</td>
-                    </tr>`;
-                }).join('');
-            })
-            .catch(err => {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">Gagal menghubungi pelayan.</td></tr>';
-            });
-        }
-
         supportFormEl.addEventListener('submit', function(e) {
             e.preventDefault(); 
             
@@ -760,7 +760,7 @@
                 if (data.success) {
                     resultMsg.innerHTML = `<span class="text-success">✅ ${data.message}</span>`;
                     document.getElementById('supportForm').reset();
-                    loadSupport(); // Minta jadual dikemas kini
+                    loadSupport(); 
                 } else {
                     resultMsg.innerHTML = `<span class="text-danger">❌ Ralat: ${data.message}</span>`;
                 }
@@ -790,7 +790,6 @@
                 if(res.data.logo_url) logoImg.src = res.data.logo_url + '?t=' + new Date().getTime(); 
                 document.getElementById('themeMode').value = res.data.theme_mode || 'Default';
                 
-                // Logik Asingkan Warna Gradient (Koma)
                 if(res.data.color_header) {
                     const parts = res.data.color_header.split(',');
                     document.getElementById('colHeader').value = parts[0];
@@ -855,7 +854,7 @@
         }
     }
 
-    // Hantar Gambar (Muat Naik Logo)
+    // Hantar Gambar
     document.getElementById('logoUploadForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const fileInput = document.getElementById('logoInput');
@@ -880,20 +879,19 @@
         }).catch(err => { btn.disabled = false; btn.textContent = 'Muat Naik Logo'; resDiv.innerHTML = `<span class="text-danger">❌ Gagal berhubung.</span>`; });
     });
 
-    // Simpan Tema (Boleh simpan 2 warna jika gradient ditekan)
+    // Simpan Tema
     document.getElementById('themeForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const btn = document.getElementById('btnSaveTheme');
         const resDiv = document.getElementById('themeResult');
         const mode = document.getElementById('themeMode').value;
         
-        // LOGIK KUTIP WARNA GRADIENT
         let headerVal = document.getElementById('colHeader').value;
         const gradientToggle = document.getElementById('useGradient');
         const color2 = document.getElementById('colHeader2');
         
         if (gradientToggle && gradientToggle.checked && color2) {
-            headerVal += ',' + color2.value; // Gabungkan warna: "#Warna1,#Warna2"
+            headerVal += ',' + color2.value; 
         }
 
         const payload = {
@@ -919,13 +917,10 @@
         });
     });
 
-    // Ekstrak warna selepas gambar siap dimuatkan
     logoImg.addEventListener('load', function() {
         if (logoImg.src.includes('placeholder')) return;
         try {
-            // Pastikan Color Thief wujud sebelum menyedut warna
             if (!colorThief) colorThief = new ColorThief();
-            
             const palette = colorThief.getPalette(logoImg, 5);
             const paletteBox = document.getElementById('colorPalette');
             paletteBox.innerHTML = '';
@@ -941,7 +936,6 @@
             console.log("Imej sedang diproses dari pelayan."); 
         }
     });
-
   </script>
 </body>
 </html>
