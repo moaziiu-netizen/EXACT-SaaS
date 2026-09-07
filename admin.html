@@ -477,8 +477,16 @@
     function deleteConfig(id) { if(!confirm("Padam lokasi ini?")) return; fetch(`/api/admin/config/${id}`, { method: 'DELETE' }).then(res => res.json()).then(() => loadConfigs()); }
     
     // --- TAB 4 ---
-    let lastCheckedSchedule = null;
+    
+    // FUNGSI YANG TERCICIR SEBELUM INI
+    function populateDropdown(selectId, dataSet) {
+        const select = document.getElementById(selectId); 
+        if(!select) return;
+        select.innerHTML = ''; 
+        Array.from(dataSet).sort().forEach(item => { if(item) select.appendChild(new Option(item, item)); });
+    }
 
+    let lastCheckedSchedule = null;
     // Fungsi canggih: Shift + Click untuk Select pelbagai jadual
     function handleScheduleCheck(e, checkbox) {
         const checkboxes = Array.from(document.querySelectorAll('.sched-checkbox:not(:disabled)'));
