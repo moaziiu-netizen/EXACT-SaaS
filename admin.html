@@ -139,15 +139,34 @@
         <div class="tab-pane fade" id="schedule" role="tabpanel">
             <div class="d-flex justify-content-between align-items-center mt-3 mb-2">
                 <h5 class="fw-bold m-0" style="color: var(--primary-color);">Pangkalan Data Jadual Petugas</h5>
-                <input type="text" id="searchSchedule" class="form-control form-control-sm" style="width: 250px;" placeholder="🔍 Cari Nama / ID / Dewan..." onkeyup="filterTable('searchSchedule', 'scheduleTableBody')">
+                <div class="d-flex gap-2">
+                    <!-- BUTANG PADAM PILIHAN -->
+                    <button class="btn btn-danger btn-sm fw-bold d-none shadow-sm" id="btnBulkDelete" onclick="deleteSelectedSchedules()">🗑️ Padam Pilihan (<span id="selCount">0</span>)</button>
+                    <input type="text" id="searchSchedule" class="form-control form-control-sm" style="width: 250px;" placeholder="🔍 Cari Nama / ID / Dewan..." onkeyup="filterTable('searchSchedule', 'scheduleTableBody')">
+                </div>
             </div>
             <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-              <table class="table table-sm table-bordered align-middle mt-2">
+              <table class="table table-sm table-hover table-bordered align-middle mt-2" style="font-size: 0.9rem;">
                 <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
-                    <tr><th>Tarikh</th><th>Sesi</th><th>Dewan (Venue)</th><th>ID Staf</th><th>Nama Petugas</th><th>Peranan</th><th>Telefon</th><th class="text-center">Tindakan</th></tr>
+                    <tr>
+                        <th>Tarikh</th>
+                        <th>Sesi</th>
+                        <th>Dewan (Venue)</th>
+                        <th>ID Staf</th>
+                        <th>Nama Petugas</th>
+                        <th>Peranan</th>
+                        <th>Telefon</th>
+                        <th class="text-center" style="width: 120px;">
+                            <div class="d-flex justify-content-center align-items-center gap-1">
+                                Tindakan 
+                                <!-- KOTAK SELECT ALL -->
+                                <input type="checkbox" id="selectAllSchedule" class="form-check-input m-0" onchange="toggleAllSchedules(this)" title="Pilih Semua">
+                            </div>
+                        </th>
+                    </tr>
                 </thead>
                 <tbody id="scheduleTableBody">
-                    <tr><td colspan="8" class="text-center text-muted">Sila tunggu...</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">Sila tunggu...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -337,17 +356,20 @@
         <div class="modal-body">
           <form id="editScheduleForm">
               <input type="hidden" id="editSchedId">
+              <div class="row">
+                  <div class="col-6 mb-2"><label class="form-label fw-bold small">Tarikh Peperiksaan</label><input type="date" class="form-control form-control-sm" id="editSchedDate" required></div>
+                  <div class="col-6 mb-2"><label class="form-label fw-bold small">Sesi</label><select class="form-select form-select-sm" id="editSchedSession" required></select></div>
+              </div>
               <div class="mb-2"><label class="form-label fw-bold small">Nama Petugas</label><input type="text" class="form-control form-control-sm" id="editSchedName" required></div>
               <div class="row">
                   <div class="col-6 mb-2"><label class="form-label fw-bold small">ID Staf <span class="text-success" style="font-size:0.75rem;">(Auto-Fill)</span></label><input type="text" class="form-control form-control-sm" id="editSchedStaffId" required></div>
-                  <div class="col-6 mb-2"><label class="form-label fw-bold small">Peranan</label><select class="form-select form-select-sm" id="editSchedRole"></select></div>
+                  <div class="col-6 mb-2"><label class="form-label fw-bold small">Peranan</label><select class="form-select form-select-sm" id="editSchedRole" required></select></div>
               </div>
               <div class="row">
                   <div class="col-6 mb-2"><label class="form-label fw-bold small">No. Telefon</label><input type="text" class="form-control form-control-sm" id="editSchedPhone"></div>
-                  <div class="col-6 mb-2"><label class="form-label fw-bold small">Sesi</label><select class="form-select form-select-sm" id="editSchedSession"></select></div>
+                  <div class="col-6 mb-2"><label class="form-label fw-bold small">Dewan (Venue)</label><input type="text" class="form-control form-control-sm" id="editSchedVenue" required></div>
               </div>
-              <div class="mb-3"><label class="form-label fw-bold small">Dewan (Venue)</label><input type="text" class="form-control form-control-sm" id="editSchedVenue"></div>
-              <button type="submit" class="btn btn-primary w-100 fw-bold" id="btnSaveSchedule">Simpan Perubahan</button>
+              <button type="submit" class="btn btn-primary w-100 fw-bold mt-2" id="btnSaveSchedule">Simpan Perubahan</button>
               <div id="editSchedResult" class="mt-2 text-center small fw-bold"></div>
           </form>
         </div>
@@ -455,10 +477,83 @@
     function deleteConfig(id) { if(!confirm("Padam lokasi ini?")) return; fetch(`/api/admin/config/${id}`, { method: 'DELETE' }).then(res => res.json()).then(() => loadConfigs()); }
     
     // --- TAB 4 ---
+    let lastCheckedSchedule = null;
+
+    // Fungsi canggih: Shift + Click untuk Select pelbagai jadual
+    function handleScheduleCheck(e, checkbox) {
+        const checkboxes = Array.from(document.querySelectorAll('.sched-checkbox:not(:disabled)'));
+        if (e.shiftKey && lastCheckedSchedule !== null) {
+            let start = checkboxes.indexOf(checkbox);
+            let end = checkboxes.indexOf(lastCheckedSchedule);
+            if (start > end) { let temp = start; start = end; end = temp; }
+            for (let i = start; i <= end; i++) checkboxes[i].checked = lastCheckedSchedule.checked;
+        }
+        lastCheckedSchedule = checkbox;
+        updateBulkDeleteBtn();
+    }
+
+    // Fungsi butang Select All pada header jadual
+    function toggleAllSchedules(source) {
+        const checkboxes = document.querySelectorAll('.sched-checkbox:not(:disabled)');
+        checkboxes.forEach(cb => {
+            // Hanya select barisan yang dipaparkan sahaja (tak tersorok sebab filter 'Cari')
+            if (cb.closest('tr').style.display !== 'none') {
+                cb.checked = source.checked;
+            }
+        });
+        updateBulkDeleteBtn();
+    }
+
+    // Mengira jumlah yg dipilih & papar butang Delete
+    function updateBulkDeleteBtn() {
+        const checkedCount = document.querySelectorAll('.sched-checkbox:checked').length;
+        const btn = document.getElementById('btnBulkDelete');
+        if (checkedCount > 0) {
+            btn.classList.remove('d-none');
+            document.getElementById('selCount').innerText = checkedCount;
+        } else {
+            btn.classList.add('d-none');
+        }
+    }
+
+    // Panggil API 35 untuk memadam
+    function deleteSelectedSchedules() {
+        const checkedBoxes = document.querySelectorAll('.sched-checkbox:checked');
+        if (checkedBoxes.length === 0) return;
+        
+        if (!confirm(`AMARAN! Anda pasti mahu memadam ${checkedBoxes.length} jadual petugas yang dipilih? Tindakan ini tidak boleh dipulihkan.`)) return;
+
+        const ids = Array.from(checkedBoxes).map(cb => cb.value);
+        const btn = document.getElementById('btnBulkDelete');
+        btn.disabled = true; btn.textContent = 'Sedang Memadam...';
+
+        fetch('/api/admin/schedules/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        })
+        .then(res => res.json())
+        .then(data => {
+            btn.disabled = false; btn.innerHTML = `🗑️ Padam Pilihan (<span id="selCount">0</span>)`;
+            if(data.success) {
+                document.getElementById('selectAllSchedule').checked = false;
+                loadSchedules(); // Segarkan semula jadual
+            } else { alert("Ralat memadam rekod: " + data.message); }
+        })
+        .catch(err => {
+            btn.disabled = false; btn.innerHTML = `🗑️ Padam Pilihan (<span id="selCount">0</span>)`;
+            alert("Ralat rangkaian.");
+        });
+    }
+
     function loadSchedules() {
-        const tbody = document.getElementById('scheduleTableBody'); tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Memuatkan...</td></tr>';
+        const tbody = document.getElementById('scheduleTableBody'); 
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Memuatkan...</td></tr>';
+        document.getElementById('btnBulkDelete').classList.add('d-none');
+        document.getElementById('selectAllSchedule').checked = false;
+
         fetch(`/api/admin/schedules/${MAIN_TENANT}`).then(res => res.json()).then(res => {
-            if(!res.success || res.data.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Tiada jadual.</td></tr>'; return; }
+            if(!res.success || res.data.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Tiada jadual.</td></tr>'; return; }
             uniqueRoles.clear(); uniqueSessions.clear(); staffDirectory = {};
             let tableHTML = '';
             res.data.forEach(s => {
@@ -468,17 +563,35 @@
                     if(!staffDirectory[s.staff_id]) staffDirectory[s.staff_id] = { name: s.staff_name, phone: s.contact_number || '' };
                     else if (s.contact_number && !staffDirectory[s.staff_id].phone) staffDirectory[s.staff_id].phone = s.contact_number;
                 }
-                tableHTML += `<tr><td>${s.exam_date || '-'}</td><td>${s.exam_session || '-'}</td><td>${s.venue || '-'}</td><td class="fw-bold">${s.staff_id || '-'}</td><td>${s.staff_name || '-'}</td><td>${s.role || '-'}</td><td>${s.contact_number || '-'}</td><td class="text-center"><button class="btn btn-sm btn-outline-primary" onclick="triggerEditSchedule('${s.id}', '${escapeHtml(s.staff_id)}', '${escapeHtml(s.staff_name)}', '${escapeHtml(s.role)}', '${escapeHtml(s.contact_number)}', '${escapeHtml(s.venue)}', '${escapeHtml(s.exam_session)}')">✏️ Edit</button></td></tr>`;
+                tableHTML += `<tr>
+                    <td>${s.exam_date || '-'}</td>
+                    <td>${s.exam_session || '-'}</td>
+                    <td>${s.venue || '-'}</td>
+                    <td class="fw-bold">${s.staff_id || '-'}</td>
+                    <td>${s.staff_name || '-'}</td>
+                    <td>${s.role || '-'}</td>
+                    <td>${s.contact_number || '-'}</td>
+                    <td class="text-center">
+                        <div class="d-flex justify-content-center align-items-center gap-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick="triggerEditSchedule('${s.id}', '${s.exam_date || ''}', '${escapeHtml(s.staff_id)}', '${escapeHtml(s.staff_name)}', '${escapeHtml(s.role)}', '${escapeHtml(s.contact_number)}', '${escapeHtml(s.venue)}', '${escapeHtml(s.exam_session)}')">✏️ Edit</button>
+                            <input type="checkbox" class="form-check-input m-0 sched-checkbox" value="${s.id}" onclick="handleScheduleCheck(event, this)">
+                        </div>
+                    </td>
+                </tr>`;
             });
-            tbody.innerHTML = tableHTML; populateDropdown('editSchedRole', uniqueRoles); populateDropdown('editSchedSession', uniqueSessions);
-        }).catch(err => { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Gagal.</td></tr>'; });
+            tbody.innerHTML = tableHTML; 
+            populateDropdown('editSchedRole', uniqueRoles); 
+            populateDropdown('editSchedSession', uniqueSessions);
+        }).catch(err => { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Gagal.</td></tr>'; });
     }
-    function populateDropdown(selectId, dataSet) {
-        const select = document.getElementById(selectId); select.innerHTML = ''; 
-        Array.from(dataSet).sort().forEach(item => { if(item) select.appendChild(new Option(item, item)); });
-    }
-    function triggerEditSchedule(id, staffId, name, role, phone, venue, session) {
-        document.getElementById('editSchedId').value = id; document.getElementById('editSchedStaffId').value = staffId; document.getElementById('editSchedName').value = name; document.getElementById('editSchedPhone').value = phone; document.getElementById('editSchedVenue').value = venue;
+
+    function triggerEditSchedule(id, date, staffId, name, role, phone, venue, session) {
+        document.getElementById('editSchedId').value = id; 
+        document.getElementById('editSchedDate').value = date; 
+        document.getElementById('editSchedStaffId').value = staffId; 
+        document.getElementById('editSchedName').value = name; 
+        document.getElementById('editSchedPhone').value = phone; 
+        document.getElementById('editSchedVenue').value = venue;
         const roleSel = document.getElementById('editSchedRole'), sessSel = document.getElementById('editSchedSession');
         if (!Array.from(roleSel.options).some(opt => opt.value === role)) roleSel.add(new Option(role, role));
         roleSel.value = role;
@@ -486,16 +599,22 @@
         sessSel.value = session;
         document.getElementById('editSchedResult').innerHTML = ''; editScheduleModal.show();
     }
-    document.getElementById('editSchedStaffId').addEventListener('keyup', function() {
-        const typedId = this.value.trim();
-        if(staffDirectory[typedId]) { document.getElementById('editSchedName').value = staffDirectory[typedId].name; document.getElementById('editSchedPhone').value = staffDirectory[typedId].phone || ''; }
-    });
+
     document.getElementById('editScheduleForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const id = document.getElementById('editSchedId').value;
-        const payload = { staff_id: document.getElementById('editSchedStaffId').value, staff_name: document.getElementById('editSchedName').value, role: document.getElementById('editSchedRole').value, contact_number: document.getElementById('editSchedPhone').value, venue: document.getElementById('editSchedVenue').value, exam_session: document.getElementById('editSchedSession').value };
+        const payload = { 
+            exam_date: document.getElementById('editSchedDate').value,
+            staff_id: document.getElementById('editSchedStaffId').value, 
+            staff_name: document.getElementById('editSchedName').value, 
+            role: document.getElementById('editSchedRole').value, 
+            contact_number: document.getElementById('editSchedPhone').value, 
+            venue: document.getElementById('editSchedVenue').value, 
+            exam_session: document.getElementById('editSchedSession').value 
+        };
         const btn = document.getElementById('btnSaveSchedule'), resultMsg = document.getElementById('editSchedResult');
         btn.disabled = true; btn.textContent = 'Menyimpan...'; resultMsg.innerHTML = '';
+        
         fetch(`/api/admin/schedule/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         .then(res => res.json())
         .then(data => { btn.disabled = false; btn.textContent = 'Simpan Perubahan'; if(data.success) { editScheduleModal.hide(); loadSchedules(); } else { resultMsg.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`; } })

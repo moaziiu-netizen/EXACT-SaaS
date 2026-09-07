@@ -709,8 +709,8 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
         const formattedData = rawData.map(row => ({
             tenant_id: tenant_id,
             exam_date: formatExcelDate(getVal(row, ['date', 'exam date', 'tarikh'])), 
-            exam_session: getVal(row, ['session', 'sesi', 'exam session']),
             campus: getVal(row, ['campus', 'kampus']),
+            exam_session: getVal(row, ['session', 'sesi', 'exam session']),
             venue: getVal(row, ['venue', 'dewan', 'lokasi']),
             course_code: getVal(row, ['course code', 'subject code', 'kod kursus', 'kod subjek', 'Course']),
             course_desc: getVal(row, ['course name', 'course description', 'Course Description', 'subject name', 'nama kursus']), // <--- DITUKAR KEPADA course_desc
@@ -941,12 +941,13 @@ app.get('/api/admin/schedules/:tenantId', async (req, res) => {
 app.put('/api/admin/schedule/:id', async (req, res) => {
     try {
         const scheduleId = req.params.id;
-        // Gunakan nama lajur yang betul!
-        const { staff_id, staff_name, role, contact_number, venue, exam_session } = req.body;
+        // DITAMBAH: exam_date 
+        const { exam_date, staff_id, staff_name, role, contact_number, venue, exam_session } = req.body;
 
         const { data, error } = await supabase
             .from('duty_schedule')
             .update({ 
+                exam_date: exam_date,  // DITAMBAH
                 staff_id: staff_id, 
                 staff_name: staff_name, 
                 role: role, 
@@ -963,6 +964,7 @@ app.put('/api/admin/schedule/:id', async (req, res) => {
         res.status(500).json({ success: false, message: err.message });
     }
 });
+
 // =====================================================
 // API 28: Hantar Tiket Sokongan (Dengan Upload Fail)
 // =====================================================
@@ -1152,6 +1154,26 @@ app.get('/api/admin/support/:tenant_id', async (req, res) => {
 
         if (error) throw error;
         res.status(200).json({ success: true, data });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// =====================================================
+// API 35: Padam Jadual Pukal (Bulk Delete)
+// =====================================================
+app.post('/api/admin/schedules/bulk-delete', async (req, res) => {
+    try {
+        const { ids } = req.body; // Terima senarai array ID
+        if (!ids || ids.length === 0) return res.status(400).json({ success: false, message: 'Tiada rekod dipilih.' });
+        
+        const { error } = await supabase
+            .from('duty_schedule')
+            .delete()
+            .in('id', ids);
+
+        if (error) throw error;
+        res.status(200).json({ success: true, message: `${ids.length} rekod berjaya dipadam.` });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
