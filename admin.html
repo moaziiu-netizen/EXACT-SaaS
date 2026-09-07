@@ -496,8 +496,7 @@
     function toggleAllSchedules(source) {
         const checkboxes = document.querySelectorAll('.sched-checkbox:not(:disabled)');
         checkboxes.forEach(cb => {
-            // Hanya select barisan yang dipaparkan sahaja (tak tersorok sebab filter 'Cari')
-            if (cb.closest('tr').style.display !== 'none') {
+            if (cb.closest('tr') && cb.closest('tr').style.display !== 'none') {
                 cb.checked = source.checked;
             }
         });
@@ -508,11 +507,14 @@
     function updateBulkDeleteBtn() {
         const checkedCount = document.querySelectorAll('.sched-checkbox:checked').length;
         const btn = document.getElementById('btnBulkDelete');
-        if (checkedCount > 0) {
-            btn.classList.remove('d-none');
-            document.getElementById('selCount').innerText = checkedCount;
-        } else {
-            btn.classList.add('d-none');
+        if (btn) {
+            if (checkedCount > 0) {
+                btn.classList.remove('d-none');
+                const selCount = document.getElementById('selCount');
+                if(selCount) selCount.innerText = checkedCount;
+            } else {
+                btn.classList.add('d-none');
+            }
         }
     }
 
@@ -525,7 +527,7 @@
 
         const ids = Array.from(checkedBoxes).map(cb => cb.value);
         const btn = document.getElementById('btnBulkDelete');
-        btn.disabled = true; btn.textContent = 'Sedang Memadam...';
+        if(btn) { btn.disabled = true; btn.textContent = 'Sedang Memadam...'; }
 
         fetch('/api/admin/schedules/bulk-delete', {
             method: 'POST',
@@ -534,31 +536,40 @@
         })
         .then(res => res.json())
         .then(data => {
-            btn.disabled = false; btn.innerHTML = `🗑️ Padam Pilihan (<span id="selCount">0</span>)`;
+            if(btn) { btn.disabled = false; btn.innerHTML = `🗑️ Padam Pilihan (<span id="selCount">0</span>)`; }
             if(data.success) {
-                document.getElementById('selectAllSchedule').checked = false;
+                const chkAll = document.getElementById('selectAllSchedule');
+                if(chkAll) chkAll.checked = false;
                 loadSchedules(); // Segarkan semula jadual
             } else { alert("Ralat memadam rekod: " + data.message); }
         })
         .catch(err => {
-            btn.disabled = false; btn.innerHTML = `🗑️ Padam Pilihan (<span id="selCount">0</span>)`;
-            alert("Ralat rangkaian.");
+            if(btn) { btn.disabled = false; btn.innerHTML = `🗑️ Padam Pilihan (<span id="selCount">0</span>)`; }
+            alert("Ralat rangkaian: " + err.message);
         });
     }
 
     function loadSchedules() {
         const tbody = document.getElementById('scheduleTableBody'); 
+        if(!tbody) return;
         tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Memuatkan...</td></tr>';
-        document.getElementById('btnBulkDelete').classList.add('d-none');
-        document.getElementById('selectAllSchedule').checked = false;
+        
+        const btnBulk = document.getElementById('btnBulkDelete');
+        if(btnBulk) btnBulk.classList.add('d-none');
+        const chkAll = document.getElementById('selectAllSchedule');
+        if(chkAll) chkAll.checked = false;
 
         fetch(`/api/admin/schedules/${MAIN_TENANT}`).then(res => res.json()).then(res => {
-            if(!res.success || res.data.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Tiada jadual.</td></tr>'; return; }
+            if(!res.success || !res.data || res.data.length === 0) { 
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Tiada jadual.</td></tr>'; 
+                return; 
+            }
             uniqueRoles.clear(); uniqueSessions.clear(); staffDirectory = {};
             let tableHTML = '';
             res.data.forEach(s => {
-                if(s.role) uniqueRoles.add(s.role.trim());
-                if(s.exam_session) uniqueSessions.add(s.exam_session.trim());
+                // Konversi data ke string untuk elak ralat jika ia berbentuk nombor
+                if(s.role) uniqueRoles.add(String(s.role).trim());
+                if(s.exam_session) uniqueSessions.add(String(s.exam_session).trim());
                 if(s.staff_id && s.staff_name) {
                     if(!staffDirectory[s.staff_id]) staffDirectory[s.staff_id] = { name: s.staff_name, phone: s.contact_number || '' };
                     else if (s.contact_number && !staffDirectory[s.staff_id].phone) staffDirectory[s.staff_id].phone = s.contact_number;
@@ -580,46 +591,70 @@
                 </tr>`;
             });
             tbody.innerHTML = tableHTML; 
-            populateDropdown('editSchedRole', uniqueRoles); 
-            populateDropdown('editSchedSession', uniqueSessions);
-        }).catch(err => { tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger py-4">Gagal.</td></tr>'; });
+            
+            // Periksa jika elemen Modal ada sebelum populate data
+            if(document.getElementById('editSchedRole')) populateDropdown('editSchedRole', uniqueRoles); 
+            if(document.getElementById('editSchedSession')) populateDropdown('editSchedSession', uniqueSessions);
+            
+        }).catch(err => { 
+            console.error("Ralat dikesan semasa melukis jadual:", err);
+            tbody.innerHTML = `<tr><td colspan="8" class="text-center text-danger py-4">Gagal melukis jadual. Sila rujuk Console. (${err.message})</td></tr>`; 
+        });
     }
 
     function triggerEditSchedule(id, date, staffId, name, role, phone, venue, session) {
-        document.getElementById('editSchedId').value = id; 
-        document.getElementById('editSchedDate').value = date; 
-        document.getElementById('editSchedStaffId').value = staffId; 
-        document.getElementById('editSchedName').value = name; 
-        document.getElementById('editSchedPhone').value = phone; 
-        document.getElementById('editSchedVenue').value = venue;
-        const roleSel = document.getElementById('editSchedRole'), sessSel = document.getElementById('editSchedSession');
-        if (!Array.from(roleSel.options).some(opt => opt.value === role)) roleSel.add(new Option(role, role));
-        roleSel.value = role;
-        if (!Array.from(sessSel.options).some(opt => opt.value === session)) sessSel.add(new Option(session, session));
-        sessSel.value = session;
-        document.getElementById('editSchedResult').innerHTML = ''; editScheduleModal.show();
+        const elId = document.getElementById('editSchedId');
+        const elDate = document.getElementById('editSchedDate');
+        const elStaffId = document.getElementById('editSchedStaffId');
+        const elName = document.getElementById('editSchedName');
+        const elPhone = document.getElementById('editSchedPhone');
+        const elVenue = document.getElementById('editSchedVenue');
+        const roleSel = document.getElementById('editSchedRole');
+        const sessSel = document.getElementById('editSchedSession');
+
+        if(elId) elId.value = id; 
+        if(elDate) elDate.value = date; 
+        if(elStaffId) elStaffId.value = staffId; 
+        if(elName) elName.value = name; 
+        if(elPhone) elPhone.value = phone; 
+        if(elVenue) elVenue.value = venue;
+        
+        if(roleSel) {
+            if (!Array.from(roleSel.options).some(opt => opt.value === role)) roleSel.add(new Option(role, role));
+            roleSel.value = role;
+        }
+        if(sessSel) {
+            if (!Array.from(sessSel.options).some(opt => opt.value === session)) sessSel.add(new Option(session, session));
+            sessSel.value = session;
+        }
+        const resDiv = document.getElementById('editSchedResult');
+        if(resDiv) resDiv.innerHTML = ''; 
+        if(editScheduleModal) editScheduleModal.show();
     }
 
-    document.getElementById('editScheduleForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const id = document.getElementById('editSchedId').value;
-        const payload = { 
-            exam_date: document.getElementById('editSchedDate').value,
-            staff_id: document.getElementById('editSchedStaffId').value, 
-            staff_name: document.getElementById('editSchedName').value, 
-            role: document.getElementById('editSchedRole').value, 
-            contact_number: document.getElementById('editSchedPhone').value, 
-            venue: document.getElementById('editSchedVenue').value, 
-            exam_session: document.getElementById('editSchedSession').value 
-        };
-        const btn = document.getElementById('btnSaveSchedule'), resultMsg = document.getElementById('editSchedResult');
-        btn.disabled = true; btn.textContent = 'Menyimpan...'; resultMsg.innerHTML = '';
-        
-        fetch(`/api/admin/schedule/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-        .then(res => res.json())
-        .then(data => { btn.disabled = false; btn.textContent = 'Simpan Perubahan'; if(data.success) { editScheduleModal.hide(); loadSchedules(); } else { resultMsg.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`; } })
-        .catch(err => { btn.disabled = false; btn.textContent = 'Simpan Perubahan'; resultMsg.innerHTML = `<span class="text-danger">Gagal.</span>`; });
-    });
+    const editSchedForm = document.getElementById('editScheduleForm');
+    if(editSchedForm) {
+        editSchedForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const id = document.getElementById('editSchedId').value;
+            const payload = { 
+                exam_date: document.getElementById('editSchedDate').value,
+                staff_id: document.getElementById('editSchedStaffId').value, 
+                staff_name: document.getElementById('editSchedName').value, 
+                role: document.getElementById('editSchedRole').value, 
+                contact_number: document.getElementById('editSchedPhone').value, 
+                venue: document.getElementById('editSchedVenue').value, 
+                exam_session: document.getElementById('editSchedSession').value 
+            };
+            const btn = document.getElementById('btnSaveSchedule'), resultMsg = document.getElementById('editSchedResult');
+            btn.disabled = true; btn.textContent = 'Menyimpan...'; resultMsg.innerHTML = '';
+            
+            fetch(`/api/admin/schedule/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+            .then(res => res.json())
+            .then(data => { btn.disabled = false; btn.textContent = 'Simpan Perubahan'; if(data.success) { editScheduleModal.hide(); loadSchedules(); } else { resultMsg.innerHTML = `<span class="text-danger">Ralat: ${data.message}</span>`; } })
+            .catch(err => { btn.disabled = false; btn.textContent = 'Simpan Perubahan'; resultMsg.innerHTML = `<span class="text-danger">Gagal.</span>`; });
+        });
+    }
 
     // --- TAB 5 ---
     let qrGenerated = false;
