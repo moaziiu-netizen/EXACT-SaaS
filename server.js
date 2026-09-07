@@ -124,21 +124,19 @@ app.get('/api/staff-today/:tenant_id/:staff_id', async (req, res) => {
 // API 3: Check-In Bersepadu (Logik Masa, Anti-Spam & PASSCODE)
 // =====================================================
 app.post('/api/checkin', async (req, res) => {
-    // KITA TAMBAH 'passcode' DI DALAM REQ.BODY INI
     const { tenant_id, staffId, name, role, campus, venue, session, remarks, passcode } = req.body;
 
     try {
-        // --- KOD BAHARU: 1. PENGESAHAN PASSCODE DARI JADUAL 'config' ---
+        // --- 1. PENGESAHAN PASSCODE & AMBIL WAKTU MULA DARI JADUAL 'config' ---
         const { data: configData, error: configErr } = await supabase
             .from('config')
-            .select('passcode')
+            .select('passcode, start_time') // <-- DITAMBAH: Tarik start_time sebagai sandaran
             .eq('tenant_id', tenant_id)
             .eq('campus', campus)
             .eq('venue', venue)
             .eq('exam_session', session)
             .single();
 
-        // Jika admin ada menetapkan passcode untuk dewan ini, semak adakah ia sama
         if (configData && configData.passcode) {
             if (configData.passcode !== passcode) {
                 return res.status(400).json({ 
@@ -147,14 +145,12 @@ app.post('/api/checkin', async (req, res) => {
                 });
             }
         }
-        // ----------------------------------------------------------------
 
-        // --- (KOD ASAL ANDA KEKAL DI BAWAH INI) ---
         const now = new Date();
         const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });
         const currentTimeStr = now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kuala_Lumpur', hour12: false });
 
-        // Semak Pendua
+        // --- 2. SEMAK PENDUA CHECK-IN ---
         const { data: existingData, error: checkError } = await supabase
             .from('attendance')
             .select('id')
@@ -168,7 +164,7 @@ app.post('/api/checkin', async (req, res) => {
             return res.status(400).json({ success: false, duplicate: true, message: 'Anda telah pun mendaftar masuk untuk sesi ini hari ini.' });
         }
 
-        // Dapatkan Waktu Mula
+        // --- 3. DAPATKAN JADUAL BERTUGAS ---
         const { data: dutyData, error: dutyError } = await supabase
             .from('duty_schedule')
             .select('start_time')
@@ -183,20 +179,29 @@ app.post('/api/checkin', async (req, res) => {
             return res.status(404).json({ success: false, message: 'Jadual tugasan tidak ditemui untuk mengira masa.' });
         }
 
-        const startTime = dutyData[0].start_time; 
-        let status = 'On-Time';
+        // --- 4. LOGIK MASA YANG DIPERBAIKI ---
+        // Jika Excel tak ada start_time, pinjam dari tetapan dewan (configData)
+        const startTime = dutyData[0].start_time || (configData ? configData.start_time : null); 
         
-        const sessionStartObj = new Date(`${todayStr}T${startTime}+08:00`); 
-        const cutoffOnTime = new Date(sessionStartObj.getTime() - (46 * 60000));
-        const cutoffGP = new Date(sessionStartObj.getTime() - (36 * 60000));
+        let status = 'Tiada Tetapan Masa'; // Lalai jika admin tak set masa di kedua-dua tempat
+        
+        if (startTime) {
+            const sessionStartObj = new Date(`${todayStr}T${startTime}+08:00`); 
+            
+            // Pengiraan Minit (Cut-off) Tepat
+            const cutoffOnTime = new Date(sessionStartObj.getTime() - (45 * 60000)); // T-45
+            const cutoffGP = new Date(sessionStartObj.getTime() - (35 * 60000));     // T-35
 
-        if (now > cutoffGP) {
-            status = 'Late';
-        } else if (now > cutoffOnTime) {
-            status = 'GP: On-Time';
+            if (now > cutoffGP) {
+                status = 'Late';         // Melepasi margin 35 minit sebelum mula (Minit 34, 10, atau selepas mula)
+            } else if (now > cutoffOnTime) {
+                status = 'GP: On-Time';  // Tepat antara 44 ke 35 minit sebelum masa bermula
+            } else {
+                status = 'On-Time';      // 45 minit atau lebih awal
+            }
         }
 
-        // Simpan Data
+        // --- 5. SIMPAN DATA KEHADIRAN ---
         const { error: insertError } = await supabase
             .from('attendance')
             .insert([{
@@ -221,6 +226,7 @@ app.post('/api/checkin', async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
 // =====================================================
 // API 4: Penapis Jadual Utama (Home Dropdowns)
 // =====================================================
