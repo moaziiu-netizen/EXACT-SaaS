@@ -728,7 +728,16 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
                 const cleanKey = key.trim().toLowerCase().replace(/\s+/g, ' '); 
                 for (let pKey of possibleKeys) {
                     if (cleanKey === pKey.toLowerCase()) {
-                        return row[key] !== null ? row[key] : null;
+                        let val = row[key];
+                        if (val === null || val === undefined) return null;
+                        
+                        // --- FUNGSI BUANG SIMBOL ' SECARA AUTOMATIK ---
+                        // Ia akan buang simbol ' tapi KEKALKAN nombor 0 di hadapan!
+                        if (typeof val === 'string' && val.startsWith("'")) {
+                            val = val.substring(1);
+                        }
+                        
+                        return val;
                     }
                 }
             }
