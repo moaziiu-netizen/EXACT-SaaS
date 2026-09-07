@@ -749,10 +749,10 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
             start_seat: String(getVal(row, ['start seat', 'mula tempat duduk', 'seat start', 'Seating From']) || ''), // <--- DITAMBAH
             end_seat: String(getVal(row, ['end seat', 'tamat tempat duduk', 'seat end', 'Seating To']) || ''), // <--- DITAMBAH
             total_student: String(getVal(row, ['total student', 'jumlah pelajar', 'total students', 'Total Student']) || ''), // <--- DITAMBAH
-            staff_id: String(getVal(row, ['staff id', 'id staf', 'id pengawas', 'Staff ID']) || ''),
+            staff_id: String(getVal(row, ['staff id', 'id staf', 'id pengawas', 'Staff ID', 'ID']) || ''),
             staff_name: getVal(row, ['name', 'staff name', 'nama', 'nama staf', 'nama pengawas', 'Name']), // <--- DITUKAR KEPADA staff_name
             role: getVal(row, ['role', 'peranan', 'jawatan', 'Role']),
-            contact_number: String(getVal(row, ['phone', 'contact number', 'no tel', 'no telefon', 'Contact Number']) || '') // <--- DITUKAR KEPADA contact_number
+            contact_number: String(getVal(row, ['phone', 'contact number', 'no tel', 'no telefon', 'Contact Number', 'Contact']) || '') // <--- DITUKAR KEPADA contact_number
         }));
 
         // 3. Masukkan data ke dalam pangkalan data (Teknik Chunking 500 baris)
