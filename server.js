@@ -669,11 +669,41 @@ app.post('/api/admin/upload-schedule', upload.single('excelFile'), async (req, r
 
         const formatExcelDate = (excelDate) => {
             if (!excelDate) return null;
+            
+            // 1. Jika Excel baca sebagai nombor siri (contoh: 45123)
             if (typeof excelDate === 'number') {
-                const date = new Date(Math.round((excelDate - 25569) * 86400 * 1000));
-                return date.toISOString().split('T')[0];
+                // Kaedah ini lebih tepat untuk elak ralat zon masa (timezone lari 1 hari)
+                const excelEpoch = new Date(1899, 11, 30);
+                excelEpoch.setDate(excelEpoch.getDate() + excelDate);
+                const yyyy = excelEpoch.getFullYear();
+                const mm = String(excelEpoch.getMonth() + 1).padStart(2, '0');
+                const dd = String(excelEpoch.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
             }
-            return String(excelDate);
+
+            // 2. Jika Excel baca sebagai Teks (String) contoh: "19/08/2026"
+            let strDate = String(excelDate).trim();
+            if (strDate.includes('/') || strDate.includes('-')) {
+                const separator = strDate.includes('/') ? '/' : '-';
+                const parts = strDate.split(separator);
+                
+                if (parts.length === 3) {
+                    let p1 = parts[0], p2 = parts[1], p3 = parts[2];
+                    
+                    // Jika memang sudah format YYYY-MM-DD
+                    if (p1.length === 4) {
+                        return `${p1}-${p2.padStart(2, '0')}-${p3.padStart(2, '0')}`;
+                    }
+                    
+                    // Jika format gaya Malaysia: DD/MM/YYYY
+                    if (p3.length === 2) p3 = '20' + p3; // Tukar tahun "26" jadi "2026"
+                    
+                    // Terbalikkan susunan supaya Supabase gembira (YYYY-MM-DD)
+                    return `${p3}-${p2.padStart(2, '0')}-${p1.padStart(2, '0')}`;
+                }
+            }
+            
+            return strDate;
         };
 
         const formatExcelTime = (excelTime) => {
