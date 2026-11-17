@@ -973,19 +973,43 @@
       sel.disabled = false;
     }
 
+    // FUNGSI BANTUAN BARU: Pencari Dropdown Kebal Typo & Ruang (Space)
+    function matchSelectRobust(selectId, val) {
+        const sel = document.getElementById(selectId);
+        if (!sel || !val) return;
+        const target = String(val).trim().toLowerCase();
+        for (let i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].value.trim().toLowerCase() === target) {
+                sel.selectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    // FUNGSI AUTO-FILL YANG TELAH DIKEMAS KINI
     function autoFillCheckin(data) {
       if(!data) return;
       document.getElementById('name').value    = data.name    || '';
       document.getElementById('staffId').value = data.staffId || '';
-      if (data.role) document.getElementById('role').value = data.role;
-      if (data.campus){ document.getElementById('campus').value = data.campus; populateVenues(); }
-      if (data.venue){ document.getElementById('venue').value = data.venue; populateSessions(); }
-      if (data.session){ document.getElementById('session').value = data.session; }
-
+      
+      // Menggunakan fungsi kebal untuk memadankan data
+      if (data.role) matchSelectRobust('role', data.role);
+      
+      if (data.campus){ 
+          matchSelectRobust('campus', data.campus); 
+          populateVenues(); // Tarik senarai dewan
+      }
+      if (data.venue){ 
+          matchSelectRobust('venue', data.venue); 
+          populateSessions(); // Tarik senarai sesi
+      }
+      if (data.session){ 
+          matchSelectRobust('session', data.session); 
+      }
+      
       const box = document.getElementById('courseInfoBox');
       const list = document.getElementById('courseDisplayList');
       const role = (data.role || '').toLowerCase();
-
       if (role.includes('invigilator') && data.assignedCourses && data.assignedCourses.length > 0) {
         box.classList.remove('d-none');
         list.innerHTML = data.assignedCourses.map(c => `
