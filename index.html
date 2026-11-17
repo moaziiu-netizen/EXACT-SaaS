@@ -966,10 +966,16 @@
       const sel = document.getElementById('session');
       sel.innerHTML = '<option value="">Select session</option>';
       if (!venue) { sel.disabled = true; return; }
+      
       const sessions = colConfigAll.filter(c => c.campus===campus && c.venue===venue);
-      sessions.forEach(s => sel.insertAdjacentHTML('beforeend',
-        `<option value="${s.exam_session}">${s.exam_session}${s.start_time?` (Start: ${s.start_time})`:''}</option>`
-      ));
+      sessions.forEach(s => {
+          // Sistem akan mengambil 5 aksara pertama sahaja (HH:MM) untuk membuang format saat
+          const formatMasa = s.start_time ? s.start_time.substring(0, 5) : '';
+          
+          sel.insertAdjacentHTML('beforeend',
+            `<option value="${s.exam_session}">${s.exam_session}${formatMasa ? ` (Start: ${formatMasa})` : ''}</option>`
+          );
+      });
       sel.disabled = false;
     }
 
